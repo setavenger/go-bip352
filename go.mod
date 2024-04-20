@@ -1,4 +1,4 @@
-module gobip352
+module github.com/setavenger/gobip352
 
 go 1.18
 
