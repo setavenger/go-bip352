@@ -7,25 +7,25 @@ import (
 //secp256k1_silentpayments_receiver_scan_outputs
 
 type FoundOutputs struct {
-	Output      []byte // 32 byte x-only pubKey
-	SecKeyTweak []byte // 32 byte tweak for the output
-	Label       []byte // 33 byte public key of the label is a label was matched
+	Output      [32]byte // x-only pubKey
+	SecKeyTweak [32]byte // tweak for the output
+	Label       [33]byte // public key of the label is a label was matched
 }
 
 type Label struct {
-	PubKey  []byte // 33 byte compressed pubKey of the label
-	Tweak   []byte // 32 byte tweak/secKey to produce the labels pubKey
-	Address string // the corresponding address for the label
+	PubKey  [33]byte // compressed pubKey of the label
+	Tweak   [32]byte // tweak/secKey to produce the labels pubKey
+	Address string   // the corresponding address for the label
 }
 
 // ReceiverScanTransaction
-// scanKey: 32 byte private scanKey of the receiver
-// receiverSpendPubKey: 33 byte spend pubKey of the receiver
+// scanKey: scanning secretKey of the receiver
+// receiverSpendPubKey: spend pubKey of the receiver
 // txOutputs: x-only outputs of the specific transaction
 // labels: existing label public keys as bytes [wallets should always check for the change label]
-// publicComponent: 33 byte either A_sum or tweaked (A_sum * input_hash) if tweaked inputHash should be nil or the computation will be flawed
+// publicComponent: either A_sum or tweaked (A_sum * input_hash) if tweaked inputHash should be nil or the computation will be flawed
 // inputHash: 32 byte can be nil if publicComponent is a tweak and already includes the input_hash
-func ReceiverScanTransaction(scanKey, receiverSpendPubKey []byte, labels []Label, txOutputs [][]byte, publicComponent, inputHash []byte) ([]*FoundOutputs, error) {
+func ReceiverScanTransaction(scanKey [32]byte, receiverSpendPubKey [33]byte, labels []Label, txOutputs [][32]byte, publicComponent [33]byte, inputHash *[32]byte) ([]*FoundOutputs, error) {
 
 	// todo should probably check inputs before computation especially the labels
 	var foundOutputs []*FoundOutputs
@@ -37,8 +37,8 @@ func ReceiverScanTransaction(scanKey, receiverSpendPubKey []byte, labels []Label
 			return nil, err
 		}
 
-		var outputPubKey []byte
-		var tweak []byte
+		var outputPubKey [32]byte
+		var tweak [32]byte
 		outputPubKey, tweak, err = CreateOutputPubKeyTweak(sharedSecret, receiverSpendPubKey, k)
 		if err != nil {
 			return nil, err
@@ -46,11 +46,11 @@ func ReceiverScanTransaction(scanKey, receiverSpendPubKey []byte, labels []Label
 
 		var found bool
 		for i, txOutput := range txOutputs {
-			if bytes.Equal(outputPubKey, txOutput) {
+			if bytes.Equal(outputPubKey[:], txOutput[:]) {
 				foundOutputs = append(foundOutputs, &FoundOutputs{
 					Output:      txOutput,
 					SecKeyTweak: tweak,
-					Label:       nil,
+					Label:       [33]byte{},
 				})
 				txOutputs = append(txOutputs[:i], txOutputs[i+1:]...)
 				found = true
@@ -65,8 +65,11 @@ func ReceiverScanTransaction(scanKey, receiverSpendPubKey []byte, labels []Label
 			// now check the labels
 			var foundLabel *Label
 
+			prependedTxOutput := ConvertToFixedLength33(append([]byte{0x02}, txOutput[:]...))
+			prependedOutputPubKey := ConvertToFixedLength33(append([]byte{0x02}, outputPubKey[:]...))
+
 			// start with normal output
-			foundLabel, err = MatchLabels(append([]byte{0x02}, txOutput...), outputPubKey, labels)
+			foundLabel, err = MatchLabels(prependedTxOutput, prependedOutputPubKey, labels)
 			if err != nil {
 				return nil, err
 			}
@@ -75,36 +78,37 @@ func ReceiverScanTransaction(scanKey, receiverSpendPubKey []byte, labels []Label
 				foundOutputs = append(foundOutputs, &FoundOutputs{
 					Output:      txOutput,
 					SecKeyTweak: tweak,
-					Label:       nil,
+					Label:       [33]byte{},
 				})
 				txOutputs = append(txOutputs[:i], txOutputs[i+1:]...)
 				found = true
 				k++
-				continue
+				break
 			}
 
 			// try the negated output for the label
-			var txOutputNegated []byte
-			txOutputNegated, err = NegatePublicKey(append([]byte{0x02}, txOutput...))
+			var txOutputNegatedCompressed [33]byte
+
+			txOutputNegatedCompressed, err = NegatePublicKey(prependedTxOutput)
 			if err != nil {
 				return nil, err
 			}
 
-			foundLabel, err = MatchLabels(txOutputNegated, outputPubKey, labels)
+			foundLabel, err = MatchLabels(txOutputNegatedCompressed, prependedOutputPubKey, labels)
 			if err != nil {
 				return nil, err
 			}
 			if foundLabel != nil {
 				tweak = AddPrivateKeys(tweak, foundLabel.Tweak) // labels have a modified tweak
 				foundOutputs = append(foundOutputs, &FoundOutputs{
-					Output:      txOutputNegated,
+					Output:      ConvertToFixedLength32(txOutputNegatedCompressed[1:]),
 					SecKeyTweak: tweak,
-					Label:       nil,
+					Label:       [33]byte{},
 				})
 				txOutputs = append(txOutputs[:i], txOutputs[i+1:]...)
 				found = true
 				k++
-				continue
+				break
 			}
 		}
 
@@ -115,7 +119,7 @@ func ReceiverScanTransaction(scanKey, receiverSpendPubKey []byte, labels []Label
 	return foundOutputs, nil
 }
 
-func MatchLabels(txOutput, pk []byte, labels []Label) (*Label, error) {
+func MatchLabels(txOutput, pk [33]byte, labels []Label) (*Label, error) {
 	// subtraction is adding a negated value
 	pkNeg, err := NegatePublicKey(pk)
 	if err != nil {
@@ -129,7 +133,7 @@ func MatchLabels(txOutput, pk []byte, labels []Label) (*Label, error) {
 	}
 
 	for _, label := range labels {
-		if bytes.Equal(labelMatch, label.PubKey) {
+		if bytes.Equal(labelMatch[1:], label.PubKey[1:]) {
 			return &label, nil
 		}
 	}

@@ -1,9 +1,9 @@
 package gobip352
 
 import (
+	"bytes"
 	"encoding/hex"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"reflect"
 	"testing"
 )
 
@@ -16,13 +16,31 @@ func TestRecursiveAddPrivateKeys(t *testing.T) {
 	pKey2, _ := hex.DecodeString("02782eeb913431ca6e9b8c2fd80a5f72ed2024ef72a3c6fb10263c379937323338")
 	pKey3, _ := hex.DecodeString("038c8d23d4764feffcd5e72e380802540fa0f88e3d62ad5e0b47955f74d7b283c4")
 
-	testRecursiveHelper(t, [][]byte{secKey1}, [][]byte{pKey1})
-	testRecursiveHelper(t, [][]byte{secKey1, secKey2}, [][]byte{pKey1, pKey2})
-	testRecursiveHelper(t, [][]byte{secKey1, secKey2, secKey3}, [][]byte{pKey1, pKey2, pKey3})
+	testRecursiveHelper(t, [][32]byte{
+		ConvertToFixedLength32(secKey1),
+	}, [][33]byte{
+		ConvertToFixedLength33(pKey1),
+	})
+	testRecursiveHelper(t, [][32]byte{
+		ConvertToFixedLength32(secKey1),
+		ConvertToFixedLength32(secKey2),
+	}, [][33]byte{
+		ConvertToFixedLength33(pKey1),
+		ConvertToFixedLength33(pKey2),
+	})
+	testRecursiveHelper(t, [][32]byte{
+		ConvertToFixedLength32(secKey1),
+		ConvertToFixedLength32(secKey2),
+		ConvertToFixedLength32(secKey3),
+	}, [][33]byte{
+		ConvertToFixedLength33(pKey1),
+		ConvertToFixedLength33(pKey2),
+		ConvertToFixedLength33(pKey3),
+	})
 
 }
 
-func testRecursiveHelper(t *testing.T, secKeys [][]byte, pKeys [][]byte) {
+func testRecursiveHelper(t *testing.T, secKeys [][32]byte, pKeys [][33]byte) {
 	secKeysSum := RecursiveAddPrivateKeys(secKeys)
 
 	pKeysSum, err := SumPublicKeys(pKeys)
@@ -31,9 +49,9 @@ func testRecursiveHelper(t *testing.T, secKeys [][]byte, pKeys [][]byte) {
 		return
 	}
 
-	_, pKeyFromSecSum := btcec.PrivKeyFromBytes(secKeysSum)
+	_, pKeyFromSecSum := btcec.PrivKeyFromBytes(secKeysSum[:])
 
-	if !reflect.DeepEqual(pKeysSum, pKeyFromSecSum.SerializeCompressed()) {
+	if !bytes.Equal(pKeysSum[:], pKeyFromSecSum.SerializeCompressed()) {
 		t.Errorf("Error: secKey: %x", secKeysSum)
 		t.Errorf("Error: %x != %x", pKeysSum, pKeyFromSecSum.SerializeCompressed())
 		return

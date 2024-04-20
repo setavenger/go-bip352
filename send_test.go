@@ -53,11 +53,13 @@ func TestSenderCreateOutputs(t *testing.T) {
 					t.Errorf("Error: %s", err)
 				}
 
+				interimSecKey := ConvertToFixedLength32(secKey)
+
 				vins = append(vins, &Vin{
-					Txid:      txid,
+					Txid:      ConvertToFixedLength32(txid),
 					Vout:      vin.Vout,
 					PublicKey: nil,
-					SecretKey: secKey,
+					SecretKey: &interimSecKey,
 					Taproot:   isP2TR(scriptPubKey),
 				})
 			}
@@ -77,7 +79,7 @@ func TestSenderCreateOutputs(t *testing.T) {
 			var containsMap = map[string]struct{}{}
 			for _, recipient := range recipients {
 				//t.Logf("B_scan: %x", recipient.ScanPubKey.SerializeCompressed())
-				containsMap[hex.EncodeToString(recipient.Output)] = struct{}{}
+				containsMap[hex.EncodeToString(recipient.Output[:])] = struct{}{}
 			}
 
 			foundCounter := 0

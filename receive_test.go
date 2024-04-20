@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
@@ -18,28 +19,30 @@ func TestReceiverScanTransaction(t *testing.T) {
 	}
 
 	for i, cases := range caseData {
-		if cases.Comment != "Receiving with labels: label with odd parity" {
-			continue
-		}
+		//if cases.Comment != "Single recipient: taproot input with NUMS point" {
+		//	continue
+		//}
 		for _, testCase := range cases.Receiving {
 			fmt.Println(i, cases.Comment)
 
 			// extract privateKeys
-			var secKeyScan []byte
-			secKeyScan, err = hex.DecodeString(testCase.Given.KeyMaterial.ScanPrivKey)
+			var secKeyScanBytes []byte
+			secKeyScanBytes, err = hex.DecodeString(testCase.Given.KeyMaterial.ScanPrivKey)
 			if err != nil {
 				t.Errorf("Error: %s", err)
 				return
 			}
+			secKeyScan := ConvertToFixedLength32(secKeyScanBytes)
 			// extract keys
-			var secKeySpend []byte
-			secKeySpend, err = hex.DecodeString(testCase.Given.KeyMaterial.SpendPrivKey)
+			var secKeySpendBytes []byte
+			secKeySpendBytes, err = hex.DecodeString(testCase.Given.KeyMaterial.SpendPrivKey)
 			if err != nil {
 				t.Errorf("Error: %s", err)
 				return
 			}
-			_, scanPubKey := btcec.PrivKeyFromBytes(secKeyScan)
-			_, spendPubKey := btcec.PrivKeyFromBytes(secKeySpend)
+			secKeySpend := ConvertToFixedLength32(secKeySpendBytes)
+			_, scanPubKey := btcec.PrivKeyFromBytes(secKeyScan[:])
+			_, spendPubKey := btcec.PrivKeyFromBytes(secKeySpend[:])
 
 			// compute label data
 			var labels []Label
@@ -48,11 +51,19 @@ func TestReceiverScanTransaction(t *testing.T) {
 				label, err = CreateLabel(secKeyScan, labelInt)
 				if err != nil {
 					t.Errorf("Error: %s", err)
+					return
 				}
 
 				var labeledAddress string
 				// todo not happy with this API yet should be able to create an address without introducing the secretKey again
-				labeledAddress, err = CreateLabeledAddress(scanPubKey.SerializeCompressed(), spendPubKey.SerializeCompressed(), true, 0, secKeyScan, labelInt)
+				labeledAddress, err = CreateLabeledAddress(
+					ConvertToFixedLength33(scanPubKey.SerializeCompressed()),
+					ConvertToFixedLength33(spendPubKey.SerializeCompressed()),
+					true,
+					0,
+					secKeyScan,
+					labelInt,
+				)
 				if err != nil {
 					t.Errorf("Error: %s", err)
 					return
@@ -66,7 +77,12 @@ func TestReceiverScanTransaction(t *testing.T) {
 			// check the generated addresses
 			containsMap := make(map[string]struct{})
 			var address string
-			address, err = CreateAddress(scanPubKey.SerializeCompressed(), spendPubKey.SerializeCompressed(), true, 0)
+			address, err = CreateAddress(
+				ConvertToFixedLength33(scanPubKey.SerializeCompressed()),
+				ConvertToFixedLength33(spendPubKey.SerializeCompressed()),
+				true,
+				0,
+			)
 			if err != nil {
 				t.Errorf("Error: %s", err)
 				return
@@ -76,7 +92,6 @@ func TestReceiverScanTransaction(t *testing.T) {
 
 			for _, label := range labels {
 				containsMap[label.Address] = struct{}{}
-
 			}
 
 			for _, targetAddress := range testCase.Expected.Addresses {
@@ -88,7 +103,7 @@ func TestReceiverScanTransaction(t *testing.T) {
 			}
 
 			// get the txOutputs of the transactions
-			var txOutputs [][]byte
+			var txOutputs [][32]byte
 			for _, output := range testCase.Given.Outputs {
 				var decodedString []byte
 				decodedString, err = hex.DecodeString(output)
@@ -96,33 +111,48 @@ func TestReceiverScanTransaction(t *testing.T) {
 					t.Errorf("Error: %s", err)
 					return
 				}
-				txOutputs = append(txOutputs, decodedString)
+				txOutputs = append(txOutputs, ConvertToFixedLength32(decodedString))
 			}
 
 			// compute tweak data
-			var publicComponent []byte
-			var inputHash []byte
+			var publicComponent [33]byte
+			var inputHash [32]byte
 			publicComponent, inputHash, err = ExtractTweak(testCase.Given.Vin)
+			if err != nil && !errors.Is(err, noErrJustSkip{}) {
+				t.Errorf("Error: %s", err)
+				return
+			} else if err != nil && errors.Is(err, noErrJustSkip{}) {
+				t.Log("we skipped")
+				continue
+			}
+
+			var foundOutputs []*FoundOutputs
+			foundOutputs, err = ReceiverScanTransaction(
+				secKeyScan,
+				ConvertToFixedLength33(spendPubKey.SerializeCompressed()),
+				labels,
+				txOutputs,
+				publicComponent,
+				&inputHash,
+			)
 			if err != nil {
 				t.Errorf("Error: %s", err)
 				return
 			}
 
-			var foundOutputs []*FoundOutputs
-			foundOutputs, err = ReceiverScanTransaction(secKeyScan, spendPubKey.SerializeCompressed(), labels, txOutputs, publicComponent, inputHash)
-			if err != nil {
-				t.Errorf("Error: %s", err)
+			if len(foundOutputs) != len(testCase.Expected.Outputs) {
+				t.Errorf("Error: wrong number outputs found %d != %d", len(foundOutputs), len(testCase.Expected.Outputs))
 				return
 			}
 
 			for i2, foundOutput := range foundOutputs {
 				targetPubKey, _ := hex.DecodeString(testCase.Expected.Outputs[i2].PubKey)
 				targetPrivKeyTweak, _ := hex.DecodeString(testCase.Expected.Outputs[i2].PrivKeyTweak)
-				if !bytes.Equal(foundOutput.Output, targetPubKey) {
+				if !bytes.Equal(foundOutput.Output[:], targetPubKey) {
 					t.Errorf("Error: output not matched %x != %x", foundOutput.Output, targetPubKey)
 					return
 				}
-				if !bytes.Equal(foundOutput.SecKeyTweak, targetPrivKeyTweak) {
+				if !bytes.Equal(foundOutput.SecKeyTweak[:], targetPrivKeyTweak) {
 					t.Errorf("Error: output not matched %x != %x", foundOutput.Output, targetPubKey)
 					return
 				}
@@ -136,7 +166,8 @@ func TestReceiverScanTransaction(t *testing.T) {
 				msgHash := sha256.Sum256(message)
 				auxHash := sha256.Sum256(aux)
 
-				fullPrivKey, _ := btcec.PrivKeyFromBytes(AddPrivateKeys(secKeySpend, foundOutput.SecKeyTweak))
+				fullPrivKeyBytes := AddPrivateKeys(secKeySpend, foundOutput.SecKeyTweak)
+				fullPrivKey, _ := btcec.PrivKeyFromBytes(fullPrivKeyBytes[:])
 
 				// Sign the message with auxiliary data influencing the nonce
 				var signature *schnorr.Signature
@@ -146,7 +177,7 @@ func TestReceiverScanTransaction(t *testing.T) {
 					return
 				}
 				var parsedOutput *btcec.PublicKey
-				parsedOutput, err = btcec.ParsePubKey(append([]byte{0x02}, foundOutput.Output...))
+				parsedOutput, err = btcec.ParsePubKey(append([]byte{0x02}, foundOutput.Output[:]...))
 				if err != nil {
 					t.Errorf("Error: %s", err)
 					return
@@ -161,10 +192,10 @@ func TestReceiverScanTransaction(t *testing.T) {
 	}
 }
 
-func ExtractTweak(caseDataVins []VinReceiveTestCase) ([]byte, []byte, error) {
+func ExtractTweak(caseDataVins []VinReceiveTestCase) ([33]byte, [32]byte, error) {
 	// convert the test vins into proper vins
 
-	var pubKeys [][]byte
+	var pubKeys [][33]byte
 	var vins []*Vin
 
 	for _, vin := range caseDataVins {
@@ -177,16 +208,13 @@ func ExtractTweak(caseDataVins []VinReceiveTestCase) ([]byte, []byte, error) {
 			var err error
 			witnessScript, err = ParseWitnessScript(witness)
 			if err != nil {
-				return nil, nil, err
+				return [33]byte{}, [32]byte{}, err
 			}
 		}
 
 		vinInner := &Vin{
-			Txid:         txid,
+			Txid:         ConvertToFixedLength32(txid),
 			Vout:         vin.Vout,
-			PublicKey:    nil,
-			SecretKey:    nil,
-			Taproot:      false,
 			Witness:      witnessScript,
 			ScriptPubKey: scriptPubKey,
 			ScriptSig:    scriptSig,
@@ -194,24 +222,36 @@ func ExtractTweak(caseDataVins []VinReceiveTestCase) ([]byte, []byte, error) {
 
 		vins = append(vins, vinInner)
 
-		pubKey, _, err := extractPubKey(vinInner)
-
+		pubKey, utxoType, err := extractPubKey(vinInner)
 		if err != nil {
-			return nil, nil, err
+			return [33]byte{}, [32]byte{}, err
 		}
 
-		pubKeys = append(pubKeys, pubKey)
+		// skip in case no pub key was extracted and no error was thrown
+		if pubKey == nil {
+			continue
+		}
+
+		if utxoType == P2TR {
+			pubKey = append([]byte{0x02}, pubKey...)
+		}
+
+		pubKeys = append(pubKeys, ConvertToFixedLength33(pubKey))
+	}
+
+	if len(pubKeys) == 0 {
+		return [33]byte{}, [32]byte{}, noErrJustSkip{}
 	}
 
 	sumPublicKeys, err := SumPublicKeys(pubKeys)
 	if err != nil {
-		return nil, nil, err
+		return [33]byte{}, [32]byte{}, err
 	}
 
 	// compute inputHash
 	inputHash, err := ComputeInputHash(vins, sumPublicKeys)
 	if err != nil {
-		return nil, nil, err
+		return [33]byte{}, [32]byte{}, err
 	}
 
 	return sumPublicKeys, inputHash, err

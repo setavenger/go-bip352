@@ -13,16 +13,10 @@ import (
 	"sort"
 )
 
-func SumPublicKeys(pubKeys [][]byte) ([]byte, error) {
-	var lastPubKeyBytes []byte
+func SumPublicKeys(pubKeys [][33]byte) ([33]byte, error) {
+	var lastPubKeyBytes [33]byte
 
 	for idx, bytesPubKey := range pubKeys {
-		// for extracted keys which are only 32 bytes (taproot) we assume even parity
-		// as we don't need the y-coordinate for any computation we can simply prepend 0x02
-		if len(bytesPubKey) == 32 {
-			bytesPubKey = bytes.Join([][]byte{{0x02}, bytesPubKey}, []byte{})
-		}
-
 		if idx == 0 {
 			lastPubKeyBytes = bytesPubKey
 			continue
@@ -31,7 +25,7 @@ func SumPublicKeys(pubKeys [][]byte) ([]byte, error) {
 		var err error
 		lastPubKeyBytes, err = AddPublicKeys(lastPubKeyBytes, bytesPubKey)
 		if err != nil {
-			return nil, err
+			return [33]byte{}, err
 		}
 	}
 
@@ -60,44 +54,44 @@ func SerU32(num uint32) ([]byte, error) {
 	return buffer.Bytes(), err
 }
 
-func AddPublicKeys(publicKeyBytes1, publicKeyBytes2 []byte) ([]byte, error) {
-	publicKey1, err := btcec.ParsePubKey(publicKeyBytes1)
+func AddPublicKeys(publicKeyBytes1, publicKeyBytes2 [33]byte) ([33]byte, error) {
+	publicKey1, err := btcec.ParsePubKey(publicKeyBytes1[:])
 	if err != nil {
-		return nil, err
+		return [33]byte{}, err
 	}
 
-	publicKey2, err := btcec.ParsePubKey(publicKeyBytes2)
+	publicKey2, err := btcec.ParsePubKey(publicKeyBytes2[:])
 	if err != nil {
-		return nil, err
+		return [33]byte{}, err
 	}
 
 	sumX, sumY := btcec.S256().Add(publicKey1.X(), publicKey1.Y(), publicKey2.X(), publicKey2.Y())
 
 	finalPubKey, err := ConvertPointsToPublicKey(sumX, sumY)
 	if err != nil {
-		return nil, err
+		return [33]byte{}, err
 	}
 
-	return finalPubKey.SerializeCompressed(), nil
+	return ConvertToFixedLength33(finalPubKey.SerializeCompressed()), nil
 }
 
-func AddPrivateKeys(secKey1, secKey2 []byte) []byte {
+func AddPrivateKeys(secKey1, secKey2 [32]byte) [32]byte {
 	// Convert hex strings to big integers
-	key1 := new(big.Int).SetBytes(secKey1)
-	key2 := new(big.Int).SetBytes(secKey2)
+	key1 := new(big.Int).SetBytes(secKey1[:])
+	key2 := new(big.Int).SetBytes(secKey2[:])
 
 	curveParams := btcec.S256().Params()
 
 	newKey := new(big.Int).Add(key1, key2)
 	newKey.Mod(newKey, curveParams.N)
-	return newKey.Bytes()
+	return ConvertToFixedLength32(newKey.Bytes())
 }
 
 // RecursiveAddPrivateKeys this is a simple addition of given privateKeys
 // Keep in mind that this function does not negate privateKeys this has to be done
 // before calling this function
-func RecursiveAddPrivateKeys(secretKeys [][]byte) []byte {
-	var secretKeysSum []byte
+func RecursiveAddPrivateKeys(secretKeys [][32]byte) [32]byte {
+	var secretKeysSum [32]byte
 	for i := 0; i < len(secretKeys); i++ {
 		if i == 0 {
 			secretKeysSum = secretKeys[0]
@@ -109,20 +103,20 @@ func RecursiveAddPrivateKeys(secretKeys [][]byte) []byte {
 	return secretKeysSum
 }
 
-func MultPrivateKeys(secKey1, secKey2 []byte) []byte {
-	key1 := new(big.Int).SetBytes(secKey1)
-	key2 := new(big.Int).SetBytes(secKey2)
+func MultPrivateKeys(secKey1, secKey2 [32]byte) [32]byte {
+	key1 := new(big.Int).SetBytes(secKey1[:])
+	key2 := new(big.Int).SetBytes(secKey2[:])
 
 	curveParams := btcec.S256().Params()
 
 	newKey := new(big.Int).Mul(key1, key2)
 	newKey.Mod(newKey, curveParams.N)
-	return newKey.Bytes()
+	return ConvertToFixedLength32(newKey.Bytes())
 }
 
-func CreateLabelPublicKey(labelTweak []byte) []byte {
-	_, pubKey := btcec.PrivKeyFromBytes(labelTweak)
-	return pubKey.SerializeCompressed()
+func CreateLabelPublicKey(labelTweak [32]byte) [33]byte {
+	_, pubKey := btcec.PrivKeyFromBytes(labelTweak[:])
+	return ConvertToFixedLength33(pubKey.SerializeCompressed())
 }
 
 func ConvertPointsToPublicKey(x, y *big.Int) (*btcec.PublicKey, error) {
@@ -155,7 +149,7 @@ func FindSmallestOutpoint(vins []*Vin) ([]byte, error) {
 
 	var outpoints [][]byte
 	for _, vin := range vins {
-		reversedTxid := ReverseBytes(vin.Txid)
+		reversedTxid := ReverseBytes(vin.Txid[:])
 
 		// Serialize the Vout as little-endian bytes
 		voutBytes := new(bytes.Buffer)
@@ -187,20 +181,19 @@ func Hash160(data []byte) []byte {
 	return ripemd160Hasher.Sum(nil)
 }
 
-func NegatePublicKey(pk []byte) ([]byte, error) {
-	pubKey, err := btcec.ParsePubKey(pk)
+func NegatePublicKey(pk [33]byte) ([33]byte, error) {
+	pubKey, err := btcec.ParsePubKey(pk[:])
 	if err != nil {
-		return nil, err
+		return [33]byte{}, err
 	}
 	curve := btcec.S256()
 	interim := new(big.Int).Sub(curve.Params().P, pubKey.Y())
 	newY := new(big.Int).Mod(interim, curve.Params().P)
 	newKey, err := ConvertPointsToPublicKey(pubKey.X(), newY)
 	if err != nil {
-		return nil, err
+		return [33]byte{}, err
 	}
-
-	return newKey.SerializeCompressed(), err
+	return ConvertToFixedLength33(newKey.SerializeCompressed()), err
 }
 
 // ParseWitnessScript parses a hex-encoded witness script and returns the actual witness data as a list
@@ -236,4 +229,22 @@ func ParseWitnessScript(data []byte) ([][]byte, error) {
 	}
 
 	return witnessData, nil
+}
+
+func ConvertToFixedLength32(input []byte) [32]byte {
+	if len(input) != 32 {
+		panic(fmt.Sprintf("wrong length expected 32 got %d", len(input)))
+	}
+	var output [32]byte
+	copy(output[:], input)
+	return output
+}
+
+func ConvertToFixedLength33(input []byte) [33]byte {
+	if len(input) != 33 {
+		panic(fmt.Sprintf("wrong length expected 32 got %d", len(input)))
+	}
+	var output [33]byte
+	copy(output[:], input)
+	return output
 }

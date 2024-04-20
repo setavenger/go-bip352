@@ -1,11 +1,10 @@
 package gobip352
 
 import (
-	"errors"
 	"github.com/btcsuite/btcd/btcutil/bech32"
 )
 
-func CreateAddress(scanPubKeyBytes, bMKeyBytes []byte, mainnet bool, version uint8) (string, error) {
+func CreateAddress(scanPubKeyBytes, bMKeyBytes [33]byte, mainnet bool, version uint8) (string, error) {
 	var data []byte
 	//data = append(data, version)
 	data = append(data, scanPubKeyBytes[:]...)
@@ -28,7 +27,7 @@ func CreateAddress(scanPubKeyBytes, bMKeyBytes []byte, mainnet bool, version uin
 	}
 }
 
-func CreateLabeledAddress(scanPubKeyBytes, spendPubKeyBytes []byte, mainnet bool, version uint8, scanSecKey []byte, m uint32) (string, error) {
+func CreateLabeledAddress(scanPubKeyBytes, spendPubKeyBytes [33]byte, mainnet bool, version uint8, scanSecKey [32]byte, m uint32) (string, error) {
 	labelTweak, err := CreateLabelTweak(scanSecKey, m)
 	if err != nil {
 		return "", err
@@ -45,10 +44,16 @@ func CreateLabeledAddress(scanPubKeyBytes, spendPubKeyBytes []byte, mainnet bool
 	return CreateAddress(scanPubKeyBytes, bMKeyBytes, mainnet, version)
 }
 
+// DecodeSilentPaymentAddress
+// Returns:
+// 1. hrp
+// 2. the raw byte data that was encoded
+// 3. the version
+// 4. the error, if one occurs
 func DecodeSilentPaymentAddress(address string, mainnet bool) (string, []byte, uint8, error) {
 	// check according to recommended length in BIP. underlying library does not do the check, so we do it here
 	if len(address) > 1023 {
-		return "", nil, 0, errors.New("exceeds BIP0352 recommended 1023 character limit")
+		return "", nil, 0, DecodingLimitExceeded{}
 	}
 	hrp, data, err := bech32.DecodeNoLimit(address)
 	if err != nil {
@@ -57,10 +62,10 @@ func DecodeSilentPaymentAddress(address string, mainnet bool) (string, []byte, u
 
 	// check that we have the correct hrp
 	if hrp == "sp" && !mainnet {
-		return "", nil, 0, errors.New("hrp did not match network")
+		return "", nil, 0, AddressHRPError{}
 	}
 	if hrp == "tsp" && mainnet {
-		return "", nil, 0, errors.New("hrp did not match network")
+		return "", nil, 0, AddressHRPError{}
 	}
 
 	// everything but the version
@@ -74,11 +79,11 @@ func DecodeSilentPaymentAddress(address string, mainnet bool) (string, []byte, u
 	return hrp, data, version, nil
 }
 
-func DecodeSilentPaymentAddressToKeys(address string, mainnet bool) (scanPubKeyBytes []byte, spendPubKeyBytes []byte, err error) {
+func DecodeSilentPaymentAddressToKeys(address string, mainnet bool) (scanPubKeyBytes, spendPubKeyBytes [33]byte, err error) {
 	_, data, _, err := DecodeSilentPaymentAddress(address, mainnet)
 	if err != nil {
-		return nil, nil, err
+		return [33]byte{}, [33]byte{}, err
 	}
 
-	return data[:33], data[33:], err
+	return ConvertToFixedLength33(data[:33]), ConvertToFixedLength33(data[33:]), err
 }

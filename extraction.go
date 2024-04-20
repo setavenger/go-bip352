@@ -2,8 +2,6 @@ package gobip352
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 )
 
 // NumsH = 0x50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0
@@ -11,6 +9,7 @@ var NumsH = []byte{80, 146, 155, 116, 193, 160, 73, 84, 183, 139, 75, 96, 53, 23
 
 // extractPubKey
 // this routine is not optimised yet and might not be able to parse all edge cases.
+// todo needs some more robustness for non-standard UTXOs
 // todo it does pass the test vectors
 func extractPubKey(vin *Vin) ([]byte, TypeUTXO, error) {
 	var pubKey []byte
@@ -18,14 +17,17 @@ func extractPubKey(vin *Vin) ([]byte, TypeUTXO, error) {
 
 	var err error
 	if isP2TR(vin.ScriptPubKey) {
-		pubKey, err = extractPubKeyHashFromP2TR(vin)
+		pubKey, err = extractPubKeyFromP2TR(vin)
 		if err != nil {
 			return nil, NoType, err
 		}
-		if pubKey == nil {
-			return nil, NoType, errors.New(fmt.Sprintf("could not extract from p2tr: %x", vin.ScriptPubKey))
+		// don't think this is needed
+		//if pubKey == nil {
+		//	return nil, NoType, errors.New(fmt.Sprintf("could not extract from p2tr: %x", vin.ScriptPubKey))
+		//}
+		if pubKey != nil {
+			utxoType = P2TR
 		}
-		utxoType = P2TR
 	} else if isP2WPKH(vin.ScriptPubKey) {
 		// last element in the witness data is public key; skip uncompressed
 		if len(vin.Witness[len(vin.Witness)-1]) == 33 {
@@ -34,10 +36,13 @@ func extractPubKey(vin *Vin) ([]byte, TypeUTXO, error) {
 		}
 	} else if isP2PKH(vin.ScriptPubKey) {
 		pubKey = extractFromP2PKH(vin)
-		if pubKey == nil {
-			return nil, NoType, errors.New(fmt.Sprintf("could not extract from p2pkh %x", vin.ScriptSig))
+		// don't think this is needed
+		//if pubKey == nil {
+		//	return nil, NoType, errors.New(fmt.Sprintf("could not extract from p2pkh %x", vin.ScriptSig))
+		//}
+		if pubKey != nil {
+			utxoType = P2PKH
 		}
-		utxoType = P2PKH
 	} else if isP2SH(vin.ScriptPubKey) {
 		// P2SH-P2WPKH which is seen as a p2sh
 		if len(vin.ScriptSig) == 23 {
@@ -71,7 +76,7 @@ func extractFromP2PKH(vin *Vin) []byte {
 	return nil
 }
 
-func extractPubKeyHashFromP2TR(vin *Vin) ([]byte, error) {
+func extractPubKeyFromP2TR(vin *Vin) ([]byte, error) {
 	witnessStack := vin.Witness
 
 	if len(witnessStack) >= 1 {

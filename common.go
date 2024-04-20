@@ -31,98 +31,87 @@ const (
 // shared_secret = (b_scan * input_hash) * A_sum   [Receiver, Full node scenario]
 //
 // shared_secret = b_scan * A_tweaked   [Receiver, Light client scenario]
-func CreateSharedSecret(publicComponent []byte, secretComponent []byte, inputHash []byte) ([]byte, error) {
-	pubKey, err := btcec.ParsePubKey(publicComponent)
+func CreateSharedSecret(publicComponent [33]byte, secretComponent [32]byte, inputHash *[32]byte) ([33]byte, error) {
+	pubKey, err := btcec.ParsePubKey(publicComponent[:])
 	if err != nil {
-		return nil, err
+		return [33]byte{}, err
 	}
 
 	if inputHash != nil {
-		secretComponent = MultPrivateKeys(secretComponent, inputHash)
+		secretComponent = MultPrivateKeys(secretComponent, *inputHash)
 	}
 
 	// Compute the scalar multiplication a * B (ECDH shared secret)
-	x, y := btcec.S256().ScalarMult(pubKey.X(), pubKey.Y(), secretComponent)
+	x, y := btcec.S256().ScalarMult(pubKey.X(), pubKey.Y(), secretComponent[:])
 
 	sharedSecretKey, err := ConvertPointsToPublicKey(x, y)
 	if err != nil {
-		return nil, err
+		return [33]byte{}, err
 	}
 
-	return sharedSecretKey.SerializeCompressed(), nil
+	return ConvertToFixedLength33(sharedSecretKey.SerializeCompressed()), nil
 }
 
 // CreateOutputPubKey
 // returns 32 byte x-only pubKey
-func CreateOutputPubKey(sharedSecret []byte, receiverSpendPubKey []byte, k uint32) ([]byte, error) {
+func CreateOutputPubKey(sharedSecret [33]byte, receiverSpendPubKey [33]byte, k uint32) ([32]byte, error) {
 	// Calculate and return P_output_xonly = B_spend + t_k * G
-	tkScalar, err := ComputeTK(sharedSecret, k)
+	output, _, err := CreateOutputPubKeyTweak(sharedSecret, receiverSpendPubKey, k)
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
-
-	// t_k * G
-	_, tkScalarPubKey := btcec.PrivKeyFromBytes(tkScalar)
-
-	// P_output_xonly = B_spend + t_k * G
-	outputPubKey, err := AddPublicKeys(receiverSpendPubKey, tkScalarPubKey.SerializeCompressed())
-	if err != nil {
-		return nil, err
-	}
-
-	// return x-only key
-	return outputPubKey[1:], nil
+	return output, nil
 }
 
 // CreateOutputPubKeyTweak
 // same as CreateOutputPubKey but this also returns the tweak of the output and the 33 byte compressed output
-func CreateOutputPubKeyTweak(sharedSecret []byte, receiverSpendPubKey []byte, k uint32) ([]byte, []byte, error) {
+func CreateOutputPubKeyTweak(sharedSecret [33]byte, receiverSpendPubKey [33]byte, k uint32) ([32]byte, [32]byte, error) {
 	// Calculate and return P_output_xonly = B_spend + t_k * G
 	tkScalar, err := ComputeTK(sharedSecret, k)
 	if err != nil {
-		return nil, nil, err
+		return [32]byte{}, [32]byte{}, err
 	}
 
 	// t_k * G
-	_, tkScalarPubKey := btcec.PrivKeyFromBytes(tkScalar)
+	_, tkScalarPubKey := btcec.PrivKeyFromBytes(tkScalar[:])
 
 	// P_output_xonly = B_spend + t_k * G
-	outputPubKey, err := AddPublicKeys(receiverSpendPubKey, tkScalarPubKey.SerializeCompressed())
+	outputPubKey, err := AddPublicKeys(receiverSpendPubKey, ConvertToFixedLength33(tkScalarPubKey.SerializeCompressed()))
 	if err != nil {
-		return nil, nil, err
+		return [32]byte{}, [32]byte{}, err
 	}
 
 	// return x-only key
-	return outputPubKey, tkScalar, nil
+	return ConvertToFixedLength32(outputPubKey[1:]), tkScalar, nil
 }
 
 func CreatePublicTweakData(publicKeys []*btcec.PublicKey, smallestOutpoint []byte) ([]byte, error) {
 	return nil, nil
 }
 
-func ComputeTK(sharedSecret []byte, k uint32) ([]byte, error) {
+func ComputeTK(sharedSecret [33]byte, k uint32) ([32]byte, error) {
 	var buffer bytes.Buffer
-	buffer.Write(sharedSecret)
+	buffer.Write(sharedSecret[:])
 	serializedK, err := SerU32(k)
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
 	buffer.Write(serializedK)
 	tKScalar := TaggedHash("BIP0352/SharedSecret", buffer.Bytes())
-	return tKScalar[:], err
+	return tKScalar, err
 }
 
-func CreateLabelTweak(scanSecKey []byte, m uint32) ([]byte, error) {
+func CreateLabelTweak(scanSecKey [32]byte, m uint32) ([32]byte, error) {
 	serialisedM, err := SerU32(m)
 	if err != nil {
-		return []byte{}, err
+		return [32]byte{}, err
 	}
 
-	hash := TaggedHash("BIP0352/Label", append(scanSecKey, serialisedM...))
-	return hash[:], nil
+	hash := TaggedHash("BIP0352/Label", append(scanSecKey[:], serialisedM...))
+	return hash, nil
 }
 
-func CreateLabel(scanSecKey []byte, m uint32) (Label, error) {
+func CreateLabel(scanSecKey [32]byte, m uint32) (Label, error) {
 	labelTweak, err := CreateLabelTweak(scanSecKey, m)
 	if err != nil {
 		return Label{}, err
@@ -136,22 +125,18 @@ func CreateLabel(scanSecKey []byte, m uint32) (Label, error) {
 // ComputeInputHash computes the input_hash for a transaction as per the specification.
 // vins: does not need to contain public key or secret key, only needs the txid and vout; txid has to be in the normal human-readable format
 // sumPublicKeys: 33 byte compressed public key sum of the inputs for shared derivation https://github.com/josibake/bips/blob/silent-payments-bip/bip-0352.mediawiki#inputs-for-shared-secret-derivation
-func ComputeInputHash(vins []*Vin, publicKeySum []byte) ([]byte, error) {
+func ComputeInputHash(vins []*Vin, publicKeySum [33]byte) ([32]byte, error) {
 	// Find the lexicographically smallest outpoint (outpointL)
 	smallestOutpoint, err := FindSmallestOutpoint(vins) // Implement this function based on your requirements
 	if err != nil {
-		return nil, fmt.Errorf("error finding smallest outpoint: %w", err)
+		return [32]byte{}, fmt.Errorf("error finding smallest outpoint: %w", err)
 	}
 
 	// Concatenate outpointL and A_sum
-	buffer := append(smallestOutpoint, publicKeySum...)
+	buffer := append(smallestOutpoint, publicKeySum[:]...)
 
 	// Compute input_hash using domain-separated hash
 	inputHash := TaggedHash("BIP0352/Inputs", buffer)
 
-	return inputHash[:], nil
-}
-
-func GenerateSignature(secSpend, privKeyTweak, hash, aux []byte) ([]byte, error) {
-	return nil, nil
+	return inputHash, nil
 }

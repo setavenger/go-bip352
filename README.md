@@ -9,7 +9,6 @@ as [Inputs For Shared Secret Derivation](https://github.com/josibake/bips/blob/s
 ## Todo
 
 - [ ] Consider using fixed length byte arrays instead of slice, will help with "type-safety" of keys, hashes, compressed, x-only, scalars  
-- [ ] Find and replace for bytes.Equal
 - [x] Sending vectors passing
 - [ ] Receiving vectors passing
 - [ ] Include vin checking module (include functionality that allows for checking whether inputs are eligible according to the BIP)
