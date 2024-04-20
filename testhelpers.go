@@ -6,6 +6,19 @@ import (
 	"testing"
 )
 
+type VinReceiveTestCase struct {
+	Txid        string `json:"txid"`
+	Vout        uint32 `json:"vout"`
+	ScriptSig   string `json:"scriptSig"`
+	Txinwitness string `json:"txinwitness"`
+	Prevout     struct {
+		ScriptPubKey struct {
+			Hex  string `json:"hex"`
+			Type string `json:"type"`
+		} `json:"scriptPubKey"`
+	} `json:"prevout"`
+}
+
 type FullTestCase struct {
 	Comment string `json:"comment"`
 	Sending []struct {
@@ -31,19 +44,8 @@ type FullTestCase struct {
 	} `json:"sending"`
 	Receiving []struct {
 		Given struct {
-			Vin []struct {
-				Txid        string `json:"txid"`
-				Vout        uint32 `json:"vout"`
-				ScriptSig   string `json:"scriptSig"`
-				Txinwitness string `json:"txinwitness"`
-				Prevout     struct {
-					ScriptPubKey struct {
-						Hex  string `json:"hex"`
-						Type string `json:"type"`
-					} `json:"scriptPubKey"`
-				} `json:"prevout"`
-			} `json:"vin"`
-			Outputs     []string `json:"outputs"`
+			Vin         []VinReceiveTestCase `json:"vin"`
+			Outputs     []string             `json:"outputs"`
 			KeyMaterial struct {
 				SpendPrivKey string `json:"spend_priv_key"`
 				ScanPrivKey  string `json:"scan_priv_key"`

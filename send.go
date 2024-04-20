@@ -2,7 +2,6 @@ package gobip352
 
 import (
 	"encoding/hex"
-	"fmt"
 	"github.com/btcsuite/btcd/btcec/v2"
 )
 
@@ -11,16 +10,18 @@ type Recipient struct {
 	ScanPubKey           *btcec.PublicKey
 	SpendPubKey          *btcec.PublicKey
 	Output               []byte         // the resulting taproot x-only output
-	Index                uint           // todo might be removed
 	Data                 map[string]any // in order to allocate data to a recipient that needs to be known after handling
 }
 
 type Vin struct {
-	Txid      []byte // txid has to be in the normal human-readable format
-	Vout      uint32
-	PublicKey []byte // 33 byte compressed public key or 32 byte taproot x-only key
-	SecretKey []byte // 32 byte secret key
-	Taproot   bool   // taproot outputs have to be even hence the flag has to be set, so we can check for negation
+	Txid         []byte   // txid has to be in the normal human-readable format
+	Vout         uint32   // output index of the input
+	PublicKey    []byte   // 33 byte compressed public key or 32 byte taproot x-only key
+	SecretKey    []byte   // 32 byte secret key
+	Taproot      bool     // indicates whether input is taproot or not. taproot outputs have to be even hence the flag has to be set, so we can check for negation
+	Witness      [][]byte // witness data for the input
+	ScriptPubKey []byte   // the scriptPubKey of the input
+	ScriptSig    []byte   // used for p2pkh
 }
 
 /*
@@ -34,13 +35,11 @@ func SenderCreateOutputs(recipients []*Recipient, vins []*Vin, mainnet bool) err
 	// negate keys if necessary before summing them
 	for _, vin := range vins {
 		var secKey = vin.SecretKey
-		fmt.Printf("secKey: %x\n", secKey)
 
 		if vin.Taproot {
 			secKey = checkToNegate(vin.SecretKey)
 		}
 
-		fmt.Printf("secKey: %x\n", secKey)
 		secretKeys = append(secretKeys, secKey)
 	}
 

@@ -47,9 +47,10 @@ func TestSenderCreateOutputs(t *testing.T) {
 					return
 				}
 
-				var isTaproot bool
-				if vin.Prevout.ScriptPubKey.Type == "witness_v1_taproot" {
-					isTaproot = true
+				var scriptPubKey []byte
+				scriptPubKey, err = hex.DecodeString(vin.Prevout.ScriptPubKey.Hex)
+				if err != nil {
+					t.Errorf("Error: %s", err)
 				}
 
 				vins = append(vins, &Vin{
@@ -57,7 +58,7 @@ func TestSenderCreateOutputs(t *testing.T) {
 					Vout:      vin.Vout,
 					PublicKey: nil,
 					SecretKey: secKey,
-					Taproot:   isTaproot,
+					Taproot:   isP2TR(scriptPubKey),
 				})
 			}
 

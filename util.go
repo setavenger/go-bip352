@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"golang.org/x/crypto/ripemd160"
 	"math/big"
 	"sort"
 )
@@ -176,4 +177,63 @@ func FindSmallestOutpoint(vins []*Vin) ([]byte, error) {
 
 	// Return the smallest outpoint
 	return outpoints[0], nil
+}
+
+// Hash160 performs a RIPEMD160(SHA256(data)) hash on the given data
+func Hash160(data []byte) []byte {
+	sha256Hash := sha256.Sum256(data)
+	ripemd160Hasher := ripemd160.New()
+	ripemd160Hasher.Write(sha256Hash[:]) // Hash the SHA256 hash
+	return ripemd160Hasher.Sum(nil)
+}
+
+func NegatePublicKey(pk []byte) ([]byte, error) {
+	pubKey, err := btcec.ParsePubKey(pk)
+	if err != nil {
+		return nil, err
+	}
+	curve := btcec.S256()
+	interim := new(big.Int).Sub(curve.Params().P, pubKey.Y())
+	newY := new(big.Int).Mod(interim, curve.Params().P)
+	newKey, err := ConvertPointsToPublicKey(pubKey.X(), newY)
+	if err != nil {
+		return nil, err
+	}
+
+	return newKey.SerializeCompressed(), err
+}
+
+// ParseWitnessScript parses a hex-encoded witness script and returns the actual witness data as a list
+func ParseWitnessScript(data []byte) ([][]byte, error) {
+
+	// The first byte indicates the number of items in the witness data
+	itemCount := int(data[0])
+	var witnessData [][]byte
+	i := 1 // Start index after the item count byte
+
+	for j := 0; j < itemCount && i < len(data); j++ {
+		if i >= len(data) {
+			return nil, fmt.Errorf("script is shorter than expected")
+		}
+
+		// The first byte of each item indicates its length
+		length := int(data[i])
+		i++
+
+		// Extract the witness data item based on the length
+		if i+length > len(data) {
+			return nil, fmt.Errorf("invalid length for witness data item")
+		}
+		item := data[i : i+length]
+
+		// Append the hex-encoded item to the result list
+		witnessData = append(witnessData, item)
+		i += length
+	}
+
+	if len(witnessData) != itemCount {
+		return nil, fmt.Errorf("actual item count does not match the expected count")
+	}
+
+	return witnessData, nil
 }
