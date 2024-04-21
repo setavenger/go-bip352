@@ -15,7 +15,7 @@ type FoundOutputs struct {
 type Label struct {
 	PubKey  [33]byte // compressed pubKey of the label
 	Tweak   [32]byte // tweak/secKey to produce the labels pubKey
-	Address string   // the corresponding address for the label
+	Address string   // todo the corresponding address for the label, still needs a good API for instantiating with this data
 }
 
 // ReceiverScanTransaction
