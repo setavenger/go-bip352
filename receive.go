@@ -4,9 +4,7 @@ import (
 	"bytes"
 )
 
-//secp256k1_silentpayments_receiver_scan_outputs
-
-type FoundOutputs struct {
+type FoundOutput struct {
 	Output      [32]byte // x-only pubKey
 	SecKeyTweak [32]byte // tweak for the output
 	Label       [33]byte // public key of the label is a label was matched
@@ -25,10 +23,10 @@ type Label struct {
 // labels: existing label public keys as bytes [wallets should always check for the change label]
 // publicComponent: either A_sum or tweaked (A_sum * input_hash) if tweaked inputHash should be nil or the computation will be flawed
 // inputHash: 32 byte can be nil if publicComponent is a tweak and already includes the input_hash
-func ReceiverScanTransaction(scanKey [32]byte, receiverSpendPubKey [33]byte, labels []Label, txOutputs [][32]byte, publicComponent [33]byte, inputHash *[32]byte) ([]*FoundOutputs, error) {
+func ReceiverScanTransaction(scanKey [32]byte, receiverSpendPubKey [33]byte, labels []Label, txOutputs [][32]byte, publicComponent [33]byte, inputHash *[32]byte) ([]*FoundOutput, error) {
 
 	// todo should probably check inputs before computation especially the labels
-	var foundOutputs []*FoundOutputs
+	var foundOutputs []*FoundOutput
 
 	var k uint32 = 0
 	for true {
@@ -47,7 +45,7 @@ func ReceiverScanTransaction(scanKey [32]byte, receiverSpendPubKey [33]byte, lab
 		var found bool
 		for i, txOutput := range txOutputs {
 			if bytes.Equal(outputPubKey[:], txOutput[:]) {
-				foundOutputs = append(foundOutputs, &FoundOutputs{
+				foundOutputs = append(foundOutputs, &FoundOutput{
 					Output:      txOutput,
 					SecKeyTweak: tweak,
 					Label:       [33]byte{},
@@ -75,10 +73,10 @@ func ReceiverScanTransaction(scanKey [32]byte, receiverSpendPubKey [33]byte, lab
 			}
 			if foundLabel != nil {
 				tweak = AddPrivateKeys(tweak, foundLabel.Tweak) // labels have a modified tweak
-				foundOutputs = append(foundOutputs, &FoundOutputs{
+				foundOutputs = append(foundOutputs, &FoundOutput{
 					Output:      txOutput,
 					SecKeyTweak: tweak,
-					Label:       [33]byte{},
+					Label:       foundLabel.PubKey,
 				})
 				txOutputs = append(txOutputs[:i], txOutputs[i+1:]...)
 				found = true
@@ -100,10 +98,10 @@ func ReceiverScanTransaction(scanKey [32]byte, receiverSpendPubKey [33]byte, lab
 			}
 			if foundLabel != nil {
 				tweak = AddPrivateKeys(tweak, foundLabel.Tweak) // labels have a modified tweak
-				foundOutputs = append(foundOutputs, &FoundOutputs{
+				foundOutputs = append(foundOutputs, &FoundOutput{
 					Output:      ConvertToFixedLength32(txOutputNegatedCompressed[1:]),
 					SecKeyTweak: tweak,
-					Label:       [33]byte{},
+					Label:       foundLabel.PubKey,
 				})
 				txOutputs = append(txOutputs[:i], txOutputs[i+1:]...)
 				found = true

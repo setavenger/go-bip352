@@ -126,7 +126,7 @@ func TestReceiverScanTransaction(t *testing.T) {
 				continue
 			}
 
-			var foundOutputs []*FoundOutputs
+			var foundOutputs []*FoundOutput
 			foundOutputs, err = ReceiverScanTransaction(
 				secKeyScan,
 				ConvertToFixedLength33(spendPubKey.SerializeCompressed()),
@@ -145,6 +145,7 @@ func TestReceiverScanTransaction(t *testing.T) {
 				return
 			}
 
+			// todo come up with test to check for labels properly found and added to foundOutput
 			for i2, foundOutput := range foundOutputs {
 				targetPubKey, _ := hex.DecodeString(testCase.Expected.Outputs[i2].PubKey)
 				targetPrivKeyTweak, _ := hex.DecodeString(testCase.Expected.Outputs[i2].PrivKeyTweak)
