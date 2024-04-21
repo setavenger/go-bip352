@@ -1,7 +1,6 @@
 package gobip352
 
 import (
-	"encoding/hex"
 	"github.com/btcsuite/btcd/btcec/v2"
 )
 
@@ -43,10 +42,10 @@ func SenderCreateOutputs(recipients []*Recipient, vins []*Vin, mainnet bool) err
 	}
 
 	// sum up the privateKeys
-	secKeySum := RecursiveAddPrivateKeys(secretKeys)
+	secretKeySum := RecursiveAddPrivateKeys(secretKeys)
 
 	// derive A_sum from the private key sum aG + bG = [a+b]*G
-	_, publicKeySum := btcec.PrivKeyFromBytes(secKeySum[:])
+	_, publicKeySum := btcec.PrivKeyFromBytes(secretKeySum[:])
 
 	publicKeySumBytes := ConvertToFixedLength33(publicKeySum.SerializeCompressed())
 
@@ -73,12 +72,9 @@ func SenderCreateOutputs(recipients []*Recipient, vins []*Vin, mainnet bool) err
 
 	groups := matchRecipients(recipients)
 
-	for scanKey, groupRecipients := range groups {
-		scanPkBytes, err := hex.DecodeString(scanKey)
-		if err != nil {
-			return err
-		}
-		sharedSecret, err := CreateSharedSecret(ConvertToFixedLength33(scanPkBytes), secKeySum, &inputHash)
+	for scanPubKey, groupRecipients := range groups {
+
+		sharedSecret, err := CreateSharedSecret(scanPubKey, secretKeySum, &inputHash)
 		if err != nil {
 			return err
 		}
@@ -107,11 +103,11 @@ func checkToNegate(secretKey [32]byte) [32]byte {
 	}
 }
 
-func matchRecipients(recipients []*Recipient) map[string][]*Recipient {
-	matches := make(map[string][]*Recipient)
+func matchRecipients(recipients []*Recipient) map[[33]byte][]*Recipient {
+	matches := make(map[[33]byte][]*Recipient)
 
 	for _, recipient := range recipients {
-		scanKey := hex.EncodeToString(recipient.ScanPubKey.SerializeCompressed())
+		scanKey := ConvertToFixedLength33(recipient.ScanPubKey.SerializeCompressed())
 		matches[scanKey] = append(matches[scanKey], recipient)
 	}
 

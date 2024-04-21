@@ -52,6 +52,12 @@ func CreateSharedSecret(publicComponent [33]byte, secretComponent [32]byte, inpu
 	return ConvertToFixedLength33(sharedSecretKey.SerializeCompressed()), nil
 }
 
+// CreateOutput
+// todo a function that creates an output from a recipient with the necessary data
+func CreateOutput() ([32]byte, error) {
+	return [32]byte{}, nil
+}
+
 // CreateOutputPubKey
 // returns 32 byte x-only pubKey
 func CreateOutputPubKey(sharedSecret [33]byte, receiverSpendPubKey [33]byte, k uint32) ([32]byte, error) {

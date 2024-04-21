@@ -5,9 +5,9 @@ import (
 )
 
 type FoundOutput struct {
-	Output      [32]byte // x-only pubKey
-	SecKeyTweak [32]byte // tweak for the output
-	Label       [33]byte // public key of the label is a label was matched
+	Output      [32]byte  // x-only pubKey
+	SecKeyTweak [32]byte  // tweak for the output
+	Label       *[33]byte // public key of the label is a label was matched
 }
 
 type Label struct {
@@ -48,7 +48,7 @@ func ReceiverScanTransaction(scanKey [32]byte, receiverSpendPubKey [33]byte, lab
 				foundOutputs = append(foundOutputs, &FoundOutput{
 					Output:      txOutput,
 					SecKeyTweak: tweak,
-					Label:       [33]byte{},
+					Label:       nil,
 				})
 				txOutputs = append(txOutputs[:i], txOutputs[i+1:]...)
 				found = true
@@ -76,7 +76,7 @@ func ReceiverScanTransaction(scanKey [32]byte, receiverSpendPubKey [33]byte, lab
 				foundOutputs = append(foundOutputs, &FoundOutput{
 					Output:      txOutput,
 					SecKeyTweak: tweak,
-					Label:       foundLabel.PubKey,
+					Label:       &foundLabel.PubKey,
 				})
 				txOutputs = append(txOutputs[:i], txOutputs[i+1:]...)
 				found = true
@@ -101,7 +101,7 @@ func ReceiverScanTransaction(scanKey [32]byte, receiverSpendPubKey [33]byte, lab
 				foundOutputs = append(foundOutputs, &FoundOutput{
 					Output:      ConvertToFixedLength32(txOutputNegatedCompressed[1:]),
 					SecKeyTweak: tweak,
-					Label:       foundLabel.PubKey,
+					Label:       &foundLabel.PubKey,
 				})
 				txOutputs = append(txOutputs[:i], txOutputs[i+1:]...)
 				found = true
