@@ -87,3 +87,12 @@ func DecodeSilentPaymentAddressToKeys(address string, mainnet bool) (scanPubKeyB
 
 	return ConvertToFixedLength33(data[:33]), ConvertToFixedLength33(data[33:]), err
 }
+
+// CreateLabelledSpendPubKey Returns the labeled spend pub key
+//
+// B_m = B_spend + label
+//
+// todo should this be included?
+func CreateLabelledSpendPubKey(spendPubKey, labelPubKey [33]byte) ([33]byte, error) {
+	return AddPublicKeys(spendPubKey, labelPubKey)
+}

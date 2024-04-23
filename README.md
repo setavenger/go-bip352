@@ -13,3 +13,4 @@ as [Inputs For Shared Secret Derivation](https://github.com/josibake/bips/blob/s
 - [x] Receiving vectors passing
 - [ ] Include vin checking module (include functionality that allows for checking whether inputs are eligible according to the BIP)
 - [ ] Standardize errors as types
+- [ ] Benchmark a map of labels against looping over the slice of labels in matching 

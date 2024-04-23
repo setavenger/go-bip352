@@ -125,7 +125,7 @@ func CreateLabel(scanSecKey [32]byte, m uint32) (Label, error) {
 
 	labelPubKey := CreateLabelPublicKey(labelTweak)
 
-	return Label{Tweak: labelTweak, PubKey: labelPubKey}, err
+	return Label{Tweak: labelTweak, PubKey: labelPubKey, M: m}, err
 }
 
 // ComputeInputHash computes the input_hash for a transaction as per the specification.

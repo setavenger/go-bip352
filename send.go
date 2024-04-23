@@ -8,7 +8,8 @@ type Recipient struct {
 	SilentPaymentAddress string
 	ScanPubKey           *btcec.PublicKey
 	SpendPubKey          *btcec.PublicKey
-	Output               [32]byte       // the resulting taproot x-only output
+	Output               [32]byte // the resulting taproot x-only output
+	Amount               uint64
 	Data                 map[string]any // in order to allocate data to a recipient that needs to be known after handling
 }
 
@@ -72,9 +73,9 @@ func SenderCreateOutputs(recipients []*Recipient, vins []*Vin, mainnet bool) err
 
 	groups := matchRecipients(recipients)
 
-	for scanPubKey, groupRecipients := range groups {
+	for receiverScanPubKey, groupRecipients := range groups {
 
-		sharedSecret, err := CreateSharedSecret(scanPubKey, secretKeySum, &inputHash)
+		sharedSecret, err := CreateSharedSecret(receiverScanPubKey, secretKeySum, &inputHash)
 		if err != nil {
 			return err
 		}

@@ -7,13 +7,14 @@ import (
 type FoundOutput struct {
 	Output      [32]byte  // x-only pubKey
 	SecKeyTweak [32]byte  // tweak for the output
-	Label       *[33]byte // public key of the label is a label was matched
+	Label       *[33]byte // public key of the label is a label was matched todo should this include the entire label?
 }
 
 type Label struct {
 	PubKey  [33]byte // compressed pubKey of the label
 	Tweak   [32]byte // tweak/secKey to produce the labels pubKey
 	Address string   // todo the corresponding address for the label, still needs a good API for instantiating with this data
+	M       uint32
 }
 
 // ReceiverScanTransaction
