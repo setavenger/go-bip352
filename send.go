@@ -16,6 +16,7 @@ type Recipient struct {
 type Vin struct {
 	Txid         [32]byte  // txid has to be in the normal human-readable format
 	Vout         uint32    // output index of the input
+	Amount       uint64    // value of the utxo in satoshi (100_000_000 sat = 1 Bitcoin)
 	PublicKey    *[33]byte // 33 byte compressed public key or 32 byte taproot x-only key
 	SecretKey    *[32]byte // 32 byte secret key
 	Taproot      bool      // indicates whether input is taproot or not. taproot outputs have to be even hence the flag has to be set, so we can check for negation
