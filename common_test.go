@@ -58,7 +58,7 @@ func TestFindSmallestOutpoint(t *testing.T) {
 	goal, _ := hex.DecodeString("3e9e968c097be878153614bbd1825ed905c8dea9b56df11414c1da35212465307f010000")
 	if !bytes.Equal(smallestOutpoint, goal) {
 		t.Errorf("Error: smallest outpoint was incorrect %x != %x", smallestOutpoint, goal)
-		//return
+		return
 	}
 
 	vin1Txid, _ = hex.DecodeString("f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16")
@@ -87,7 +87,7 @@ func TestFindSmallestOutpoint(t *testing.T) {
 	goal, _ = hex.DecodeString("169e1e83e930853391bc6f35f605c6754cfead57cf8387639d3b4096c54f18f403000000")
 	if !bytes.Equal(smallestOutpoint, goal) {
 		t.Errorf("Error: smallest outpoint was incorrect %x != %x", smallestOutpoint, goal)
-		//return
+		return
 	}
 
 	vin1Txid, _ = hex.DecodeString("f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16")
@@ -113,7 +113,7 @@ func TestFindSmallestOutpoint(t *testing.T) {
 	}
 	fmt.Printf("%x\n", smallestOutpoint)
 
-	goal, _ = hex.DecodeString("169e1e83e930853391bc6f35f605c6754cfead57cf8387639d3b4096c54f18f403000000")
+	goal, _ = hex.DecodeString("169e1e83e930853391bc6f35f605c6754cfead57cf8387639d3b4096c54f18f4aa010000")
 	if !bytes.Equal(smallestOutpoint, goal) {
 		t.Errorf("Error: smallest outpoint was incorrect %x != %x", smallestOutpoint, goal)
 		return
