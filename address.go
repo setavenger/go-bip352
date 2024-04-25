@@ -11,15 +11,16 @@ func CreateAddress(scanPubKeyBytes, bMKeyBytes [33]byte, mainnet bool, version u
 	data = append(data, bMKeyBytes[:]...)
 
 	convertBits, err := bech32.ConvertBits(data, 8, 5, true)
+	if err != nil {
+		return "", err
+	}
+
 	data = append(data, version)
 
 	var finalSlice []byte
 	finalSlice = append(finalSlice, version)
 	finalSlice = append(finalSlice, convertBits...)
 
-	if err != nil {
-		return "", err
-	}
 	if mainnet {
 		return bech32.EncodeM("sp", finalSlice)
 	} else {
@@ -53,7 +54,7 @@ func CreateLabeledAddress(scanPubKeyBytes, spendPubKeyBytes [33]byte, mainnet bo
 func DecodeSilentPaymentAddress(address string, mainnet bool) (string, []byte, uint8, error) {
 	// check according to recommended length in BIP. underlying library does not do the check, so we do it here
 	if len(address) > 1023 {
-		return "", nil, 0, DecodingLimitExceeded{}
+		return "", nil, 0, DecodingLimitExceeded
 	}
 	hrp, data, err := bech32.DecodeNoLimit(address)
 	if err != nil {
@@ -62,10 +63,10 @@ func DecodeSilentPaymentAddress(address string, mainnet bool) (string, []byte, u
 
 	// check that we have the correct hrp
 	if hrp == "sp" && !mainnet {
-		return "", nil, 0, AddressHRPError{}
+		return "", nil, 0, AddressHRPError
 	}
 	if hrp == "tsp" && mainnet {
-		return "", nil, 0, AddressHRPError{}
+		return "", nil, 0, AddressHRPError
 	}
 
 	// everything but the version

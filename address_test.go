@@ -81,7 +81,7 @@ func TestDecodeSPAddress(t *testing.T) {
 	decodedData, _ := hex.DecodeString("0220bcfac5b99e04ad1a06ddfb016ee13582609d60b6291e98d01a9bc9a16c96d4025cc9856d6f8375350e123978daac200c260cb5b5ae83106cab90484dcd8fcf36")
 	address := "sp1qqgste7k9hx0qftg6qmwlkqtwuy6cycyavzmzj85c6qdfhjdpdjtdgqjuexzk6murw56suy3e0rd2cgqvycxttddwsvgxe2usfpxumr70xc9pkqwv"
 	hrp, data, version, err := DecodeSilentPaymentAddress(address, false)
-	if !errors.Is(err, AddressHRPError{}) {
+	if !errors.Is(err, AddressHRPError) {
 		t.Errorf("Error: wrong error %s", err)
 		return
 	}
@@ -143,7 +143,7 @@ func TestBech32MDecodingLimitExceeded_Error(t *testing.T) {
 	}
 
 	_, _, _, err = DecodeSilentPaymentAddress(encoded, true)
-	if !errors.Is(err, DecodingLimitExceeded{}) {
+	if !errors.Is(err, DecodingLimitExceeded) {
 		t.Errorf("Error: wrong error %s", err)
 		return
 	}

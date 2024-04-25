@@ -32,12 +32,24 @@ func SumPublicKeys(pubKeys [][33]byte) ([33]byte, error) {
 	return lastPubKeyBytes, nil
 }
 
+// ReverseBytes reverses the byte slice and returns that same byte slice
+// todo misleading? but practical as it can then be used inline as parameter or assigning
 func ReverseBytes(bytes []byte) []byte {
 	for i, j := 0, len(bytes)-1; i < j; i, j = i+1, j-1 {
 		bytes[i], bytes[j] = bytes[j], bytes[i]
 	}
 	return bytes
 }
+
+func ReverseBytesCopy(bytes []byte) []byte {
+	bytesCopy := make([]byte, len(bytes))
+	copy(bytesCopy, bytes)
+	for i, j := 0, len(bytesCopy)-1; i < j; i, j = i+1, j-1 {
+		bytesCopy[i], bytesCopy[j] = bytesCopy[j], bytesCopy[i]
+	}
+	return bytesCopy
+}
+
 func TaggedHash(tag string, msg []byte) [32]byte {
 	tagHash := sha256.Sum256([]byte(tag))
 	data := append(tagHash[:], tagHash[:]...)
@@ -149,7 +161,8 @@ func FindSmallestOutpoint(vins []*Vin) ([]byte, error) {
 
 	var outpoints [][]byte
 	for _, vin := range vins {
-		reversedTxid := ReverseBytes(vin.Txid[:])
+		// we copy the byte slice here to avoid confusion with the endian format of the txid byte slice later on
+		reversedTxid := ReverseBytesCopy(vin.Txid[:])
 
 		// Serialize the Vout as little-endian bytes
 		voutBytes := new(bytes.Buffer)

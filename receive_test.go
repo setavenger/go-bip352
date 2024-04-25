@@ -118,10 +118,10 @@ func TestReceiverScanTransaction(t *testing.T) {
 			var publicComponent [33]byte
 			var inputHash [32]byte
 			publicComponent, inputHash, err = ExtractTweak(testCase.Given.Vin)
-			if err != nil && !errors.Is(err, noErrJustSkip{}) {
+			if err != nil && !errors.Is(err, noErrJustSkip) {
 				t.Errorf("Error: %s", err)
 				return
-			} else if err != nil && errors.Is(err, noErrJustSkip{}) {
+			} else if err != nil && errors.Is(err, noErrJustSkip) {
 				t.Log("we skipped")
 				continue
 			}
@@ -241,7 +241,7 @@ func ExtractTweak(caseDataVins []VinReceiveTestCase) ([33]byte, [32]byte, error)
 	}
 
 	if len(pubKeys) == 0 {
-		return [33]byte{}, [32]byte{}, noErrJustSkip{}
+		return [33]byte{}, [32]byte{}, noErrJustSkip
 	}
 
 	sumPublicKeys, err := SumPublicKeys(pubKeys)

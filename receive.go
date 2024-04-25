@@ -5,16 +5,16 @@ import (
 )
 
 type FoundOutput struct {
-	Output      [32]byte  // x-only pubKey
-	SecKeyTweak [32]byte  // tweak for the output
-	Label       *[33]byte // public key of the label is a label was matched todo should this include the entire label?
+	Output      [32]byte // x-only pubKey
+	SecKeyTweak [32]byte // tweak for the output
+	Label       *Label   // the label that was matched if there was a label to match
 }
 
 type Label struct {
-	PubKey  [33]byte // compressed pubKey of the label
-	Tweak   [32]byte // tweak/secKey to produce the labels pubKey
-	Address string   // todo the corresponding address for the label, still needs a good API for instantiating with this data
-	M       uint32
+	PubKey  [33]byte `json:"pub_key"` // compressed pubKey of the label
+	Tweak   [32]byte `json:"tweak"`   // tweak/secKey to produce the labels pubKey
+	Address string   `json:"address"` // todo the corresponding address for the label, still needs a good API for instantiating with this data
+	M       uint32   `json:"m"`
 }
 
 // ReceiverScanTransaction
@@ -77,7 +77,7 @@ func ReceiverScanTransaction(scanKey [32]byte, receiverSpendPubKey [33]byte, lab
 				foundOutputs = append(foundOutputs, &FoundOutput{
 					Output:      txOutput,
 					SecKeyTweak: tweak,
-					Label:       &foundLabel.PubKey,
+					Label:       foundLabel,
 				})
 				txOutputs = append(txOutputs[:i], txOutputs[i+1:]...)
 				found = true
@@ -102,7 +102,7 @@ func ReceiverScanTransaction(scanKey [32]byte, receiverSpendPubKey [33]byte, lab
 				foundOutputs = append(foundOutputs, &FoundOutput{
 					Output:      ConvertToFixedLength32(txOutputNegatedCompressed[1:]),
 					SecKeyTweak: tweak,
-					Label:       &foundLabel.PubKey,
+					Label:       foundLabel,
 				})
 				txOutputs = append(txOutputs[:i], txOutputs[i+1:]...)
 				found = true
