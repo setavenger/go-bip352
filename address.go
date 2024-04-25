@@ -37,7 +37,7 @@ func CreateLabeledAddress(scanPubKeyBytes, spendPubKeyBytes [33]byte, mainnet bo
 	label := CreateLabelPublicKey(labelTweak)
 
 	// todo does this need some sort of check additional check (e.g. point on the curve)?
-	bMKeyBytes, err := AddPublicKeys(spendPubKeyBytes, label)
+	bMKeyBytes, err := CreateLabelledSpendPubKey(spendPubKeyBytes, label)
 	if err != nil {
 		return "", err
 	}
@@ -69,8 +69,7 @@ func DecodeSilentPaymentAddress(address string, mainnet bool) (string, []byte, u
 		return "", nil, 0, AddressHRPError
 	}
 
-	// everything but the version
-
+	// extract everything but the version as data
 	version, data := data[0], data[1:]
 
 	data, err = bech32.ConvertBits(data, 5, 8, false)
@@ -92,8 +91,6 @@ func DecodeSilentPaymentAddressToKeys(address string, mainnet bool) (scanPubKeyB
 // CreateLabelledSpendPubKey Returns the labeled spend pub key
 //
 // B_m = B_spend + label
-//
-// todo should this be included?
 func CreateLabelledSpendPubKey(spendPubKey, labelPubKey [33]byte) ([33]byte, error) {
 	return AddPublicKeys(spendPubKey, labelPubKey)
 }

@@ -10,4 +10,8 @@ var (
 	AddressHRPError = errors.New("hrp did not match network")
 
 	DecodingLimitExceeded = errors.New("exceeds BIP0352 recommended 1023 character limit")
+
+	ErrVinsEmpty = errors.New("vins were empty")
+
+	ErrNoEligibleVins = errors.New("no eligible vins")
 )

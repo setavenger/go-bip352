@@ -396,6 +396,102 @@
     ]
   },
   {
+    "comment": "Outpoint ordering byte-lexicographically vs. vout-integer",
+    "sending": [
+      {
+        "given": {
+          "vin": [
+            {
+              "txid": "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16",
+              "vout": 1,
+              "scriptSig": "483046022100ad79e6801dd9a8727f342f31c71c4912866f59dc6e7981878e92c5844a0ce929022100fb0d2393e813968648b9753b7e9871d90ab3d815ebf91820d704b19f4ed224d621025a1e61f898173040e20616d43e9f496fba90338a39faa1ed98fcbaeee4dd9be5",
+              "txinwitness": "",
+              "prevout": {
+                "scriptPubKey": {
+                  "hex": "76a91419c2f3ae0ca3b642bd3e49598b8da89f50c1416188ac",
+                  "type": "pubkeyhash"
+                }
+              },
+              "private_key": "eadc78165ff1f8ea94ad7cfdc54990738a4c53f6e0507b42154201b8e5dff3b1"
+            },
+            {
+              "txid": "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16",
+              "vout": 256,
+              "scriptSig": "48304602210086783ded73e961037e77d49d9deee4edc2b23136e9728d56e4491c80015c3a63022100fda4c0f21ea18de29edbce57f7134d613e044ee150a89e2e64700de2d4e83d4e2103bd85685d03d111699b15d046319febe77f8de5286e9e512703cdee1bf3be3792",
+              "txinwitness": "",
+              "prevout": {
+                "scriptPubKey": {
+                  "hex": "76a914d9317c66f54ff0a152ec50b1d19c25be50c8e15988ac",
+                  "type": "pubkeyhash"
+                }
+              },
+              "private_key": "93f5ed907ad5b2bdbbdcb5d9116ebc0a4e1f92f910d5260237fa45a9408aad16"
+            }
+          ],
+          "recipients": [
+            "sp1qqgste7k9hx0qftg6qmwlkqtwuy6cycyavzmzj85c6qdfhjdpdjtdgqjuexzk6murw56suy3e0rd2cgqvycxttddwsvgxe2usfpxumr70xc9pkqwv"
+          ]
+        },
+        "expected": {
+          "outputs": [
+            "a85ef8701394b517a4b35217c4bd37ac01ebeed4b008f8d0879f9e09ba95319c"
+          ]
+        }
+      }
+    ],
+    "receiving": [
+      {
+        "given": {
+          "vin": [
+            {
+              "txid": "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16",
+              "vout": 1,
+              "scriptSig": "483046022100ad79e6801dd9a8727f342f31c71c4912866f59dc6e7981878e92c5844a0ce929022100fb0d2393e813968648b9753b7e9871d90ab3d815ebf91820d704b19f4ed224d621025a1e61f898173040e20616d43e9f496fba90338a39faa1ed98fcbaeee4dd9be5",
+              "txinwitness": "",
+              "prevout": {
+                "scriptPubKey": {
+                  "hex": "76a91419c2f3ae0ca3b642bd3e49598b8da89f50c1416188ac"
+                }
+              }
+            },
+            {
+              "txid": "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16",
+              "vout": 256,
+              "scriptSig": "48304602210086783ded73e961037e77d49d9deee4edc2b23136e9728d56e4491c80015c3a63022100fda4c0f21ea18de29edbce57f7134d613e044ee150a89e2e64700de2d4e83d4e2103bd85685d03d111699b15d046319febe77f8de5286e9e512703cdee1bf3be3792",
+              "txinwitness": "",
+              "prevout": {
+                "scriptPubKey": {
+                  "hex": "76a914d9317c66f54ff0a152ec50b1d19c25be50c8e15988ac",
+                  "type": "pubkeyhash"
+                }
+              }
+            }
+          ],
+          "outputs": [
+            "a85ef8701394b517a4b35217c4bd37ac01ebeed4b008f8d0879f9e09ba95319c"
+          ],
+          "key_material": {
+            "spend_priv_key": "9d6ad855ce3417ef84e836892e5a56392bfba05fa5d97ccea30e266f540e08b3",
+            "scan_priv_key": "0f694e068028a717f8af6b9411f9a133dd3565258714cc226594b34db90c1f2c"
+          },
+          "labels": []
+        },
+        "expected": {
+          "addresses": [
+            "sp1qqgste7k9hx0qftg6qmwlkqtwuy6cycyavzmzj85c6qdfhjdpdjtdgqjuexzk6murw56suy3e0rd2cgqvycxttddwsvgxe2usfpxumr70xc9pkqwv"
+          ],
+          "outputs": [
+            {
+              "pub_key": "a85ef8701394b517a4b35217c4bd37ac01ebeed4b008f8d0879f9e09ba95319c",
+              "priv_key_tweak": "c8ac0292997b5bca98b3ebd99a57e253071137550f270452cd3df8a3e2266d36",
+              "signature": "c036ee38bfe46aba03234339ae7219b31b824b52ef9d5ce05810a0d6f62330dedc2b55652578aa5bdabf930fae941acd839d5a66f8fce7caa9710ccb446bddd1"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
     "comment": "Single recipient: multiple UTXOs from the same public key",
     "sending": [
       {

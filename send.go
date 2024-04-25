@@ -16,13 +16,38 @@ type Recipient struct {
 /*
 SenderCreateOutputs
 recipients: must include result will be stored in the recipients.
-vins: has to include the txids and vouts
+vins: has to include the txids, vouts and secretKeys
+
+NOTE: if checkVins is set to true the vins should include the necessary data in order to categorise them
+i.e. (scriptpubkey andOr witness andOr scriptSig)
 */
-func SenderCreateOutputs(recipients []*Recipient, vins []*Vin, mainnet bool) error {
+func SenderCreateOutputs(recipients []*Recipient, vins []*Vin, mainnet bool, checkVins bool) error {
+	var err error
 	var secretKeys [][32]byte
 
-	// negate keys if necessary before summing them
-	for _, vin := range vins {
+	// first simple alias
+	var vinsSharedDerivation = vins
+
+	// if the vins are supposed to be checked we create a deep copy with new values
+	if checkVins {
+		// create a deepCopy for a slice that holds all vins for the shared derivation which is a subset of vins passed into the function
+		vinsSharedDerivation = make([]*Vin, len(vins))
+		for i, vin := range vins {
+			vinsSharedDerivation[i] = vin.DeepCopy()
+		}
+
+		vinsSharedDerivation, err = ExtractEligibleVins(vinsSharedDerivation)
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(vinsSharedDerivation) == 0 {
+		return ErrNoEligibleVins
+	}
+
+	// negate keys if necessary before summing them; only uses eligible inputs
+	for _, vin := range vinsSharedDerivation {
 		interim := *vin.SecretKey
 		if vin.Taproot {
 			interim = checkToNegate(*vin.SecretKey)

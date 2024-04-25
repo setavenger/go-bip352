@@ -7,24 +7,39 @@ import (
 // NumsH = 0x50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0
 var NumsH = []byte{80, 146, 155, 116, 193, 160, 73, 84, 183, 139, 75, 96, 53, 233, 122, 94, 7, 138, 90, 15, 40, 236, 150, 213, 71, 191, 238, 154, 206, 128, 58, 192}
 
-// extractPubKey
-// this routine is not optimised yet and might not be able to parse all edge cases.
-// todo needs some more robustness for non-standard UTXOs
-// todo it does pass the test vectors
-func extractPubKey(vin *Vin) ([]byte, TypeUTXO, error) {
-	var pubKey []byte
-	var utxoType TypeUTXO
+// ExtractEligibleVins
+// returns a slice of vins which are eligible as inputs for the shared derivation
+// NOTE: Returns a deep copy of the vins this will also set the taproot bool flag in the vins of the new returned slice
+func ExtractEligibleVins(vins []*Vin) ([]*Vin, error) {
+	var eligibleVins []*Vin
 
-	var err error
-	if isP2TR(vin.ScriptPubKey) {
-		pubKey, err = extractPubKeyFromP2TR(vin)
-		if err != nil {
-			return nil, NoType, err
+	for _, vin := range vins {
+		_, utxoType := ExtractPubKey(vin)
+
+		switch utxoType {
+		case P2TR:
+			vin.Taproot = true
+		case Unknown:
+			continue
+		default:
+			vin.Taproot = false
 		}
-		// don't think this is needed
-		//if pubKey == nil {
-		//	return nil, NoType, errors.New(fmt.Sprintf("could not extract from p2tr: %x", vin.ScriptPubKey))
-		//}
+
+		eligibleVins = append(eligibleVins, vin)
+	}
+
+	return eligibleVins, nil
+}
+
+// ExtractPubKey
+// this routine is not optimised yet and might not be able to parse all edge cases.
+// NOTE: Does not throw any errors, check the utxo type or the byte slice to see whether a public key could be extracted
+func ExtractPubKey(vin *Vin) ([]byte, TypeUTXO) {
+	var pubKey []byte
+	var utxoType = Unknown
+
+	if isP2TR(vin.ScriptPubKey) {
+		pubKey = extractPubKeyFromP2TR(vin)
 		if pubKey != nil {
 			utxoType = P2TR
 		}
@@ -36,10 +51,6 @@ func extractPubKey(vin *Vin) ([]byte, TypeUTXO, error) {
 		}
 	} else if isP2PKH(vin.ScriptPubKey) {
 		pubKey = extractFromP2PKH(vin)
-		// don't think this is needed
-		//if pubKey == nil {
-		//	return nil, NoType, errors.New(fmt.Sprintf("could not extract from p2pkh %x", vin.ScriptSig))
-		//}
 		if pubKey != nil {
 			utxoType = P2PKH
 		}
@@ -55,7 +66,7 @@ func extractPubKey(vin *Vin) ([]byte, TypeUTXO, error) {
 		}
 	}
 
-	return pubKey, utxoType, nil
+	return pubKey, utxoType
 }
 
 // extractPublicKey tries to find a public key within the given scriptSig.
@@ -76,7 +87,7 @@ func extractFromP2PKH(vin *Vin) []byte {
 	return nil
 }
 
-func extractPubKeyFromP2TR(vin *Vin) ([]byte, error) {
+func extractPubKeyFromP2TR(vin *Vin) []byte {
 	witnessStack := vin.Witness
 
 	if len(witnessStack) >= 1 {
@@ -94,17 +105,17 @@ func extractPubKeyFromP2TR(vin *Vin) ([]byte, error) {
 
 				if bytes.Equal(internalKey, NumsH) {
 					// Skip if internal key is NUMS_H
-					return nil, nil
+					return nil
 				}
 
-				return vin.ScriptPubKey[2:], nil
+				return vin.ScriptPubKey[2:]
 			}
 		}
 
-		return vin.ScriptPubKey[2:], nil
+		return vin.ScriptPubKey[2:]
 	}
 
-	return nil, nil
+	return nil
 }
 
 // isP2TR checks if the script is a P2TR (Pay-to-Taproot) type.

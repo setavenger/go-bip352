@@ -18,12 +18,9 @@ func TestReceiverScanTransaction(t *testing.T) {
 		return
 	}
 
-	for i, cases := range caseData {
-		//if cases.Comment != "Single recipient: taproot input with NUMS point" {
-		//	continue
-		//}
+	for iOuter, cases := range caseData {
 		for _, testCase := range cases.Receiving {
-			fmt.Println(i, cases.Comment)
+			fmt.Println(iOuter, cases.Comment)
 
 			// extract privateKeys
 			var secKeyScanBytes []byte
@@ -146,9 +143,9 @@ func TestReceiverScanTransaction(t *testing.T) {
 			}
 
 			// todo come up with test to check for labels properly found and added to foundOutput
-			for i2, foundOutput := range foundOutputs {
-				targetPubKey, _ := hex.DecodeString(testCase.Expected.Outputs[i2].PubKey)
-				targetPrivKeyTweak, _ := hex.DecodeString(testCase.Expected.Outputs[i2].PrivKeyTweak)
+			for iInner, foundOutput := range foundOutputs {
+				targetPubKey, _ := hex.DecodeString(testCase.Expected.Outputs[iInner].PubKey)
+				targetPrivKeyTweak, _ := hex.DecodeString(testCase.Expected.Outputs[iInner].PrivKeyTweak)
 				if !bytes.Equal(foundOutput.Output[:], targetPubKey) {
 					t.Errorf("Error: output not matched %x != %x", foundOutput.Output, targetPubKey)
 					return
@@ -177,6 +174,7 @@ func TestReceiverScanTransaction(t *testing.T) {
 					t.Errorf("Error: %s", err)
 					return
 				}
+
 				var parsedOutput *btcec.PublicKey
 				parsedOutput, err = btcec.ParsePubKey(append([]byte{0x02}, foundOutput.Output[:]...))
 				if err != nil {
@@ -193,6 +191,8 @@ func TestReceiverScanTransaction(t *testing.T) {
 	}
 }
 
+// ExtractTweak
+// returns: publicComponent, inputHash, error
 func ExtractTweak(caseDataVins []VinReceiveTestCase) ([33]byte, [32]byte, error) {
 	// convert the test vins into proper vins
 
@@ -223,9 +223,9 @@ func ExtractTweak(caseDataVins []VinReceiveTestCase) ([33]byte, [32]byte, error)
 
 		vins = append(vins, vinInner)
 
-		pubKey, utxoType, err := extractPubKey(vinInner)
-		if err != nil {
-			return [33]byte{}, [32]byte{}, err
+		pubKey, utxoType := ExtractPubKey(vinInner)
+		if utxoType == Unknown {
+			return [33]byte{}, [32]byte{}, noErrJustSkip
 		}
 
 		// skip in case no pub key was extracted and no error was thrown

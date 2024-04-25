@@ -20,6 +20,7 @@ type Vin struct {
 func (v Vin) Hash() *chainhash.Hash {
 	hash, err := chainhash.NewHash(v.Txid[:])
 	if err != nil {
+		// panic it should never ever panic but if for god knows what this fails we want to panic early and not get zero slices or anything somewhere
 		panic(err)
 	}
 	return hash
@@ -45,4 +46,52 @@ func (v Vin) NumConfs() int64 {
 // ValueAge not implemented
 func (v Vin) ValueAge() int64 {
 	return 0
+}
+
+func (v *Vin) DeepCopy() *Vin {
+	if v == nil {
+		return nil
+	}
+
+	copyVin := Vin{
+		Txid:    v.Txid, // directly copied as it is an array
+		Vout:    v.Vout,
+		Amount:  v.Amount,
+		Taproot: v.Taproot,
+	}
+
+	// Copy PublicKey
+	if v.PublicKey != nil {
+		copyPublicKey := *v.PublicKey
+		copyVin.PublicKey = &copyPublicKey
+	}
+
+	// Copy SecretKey
+	if v.SecretKey != nil {
+		copySecretKey := *v.SecretKey
+		copyVin.SecretKey = &copySecretKey
+	}
+
+	// Deep copy Witness
+	if v.Witness != nil {
+		copyVin.Witness = make([][]byte, len(v.Witness))
+		for i, data := range v.Witness {
+			copyVin.Witness[i] = make([]byte, len(data))
+			copy(copyVin.Witness[i], data)
+		}
+	}
+
+	// Deep copy ScriptPubKey
+	if v.ScriptPubKey != nil {
+		copyVin.ScriptPubKey = make([]byte, len(v.ScriptPubKey))
+		copy(copyVin.ScriptPubKey, v.ScriptPubKey)
+	}
+
+	// Deep copy ScriptSig
+	if v.ScriptSig != nil {
+		copyVin.ScriptSig = make([]byte, len(v.ScriptSig))
+		copy(copyVin.ScriptSig, v.ScriptSig)
+	}
+
+	return &copyVin
 }

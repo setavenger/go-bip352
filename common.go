@@ -6,15 +6,14 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 )
 
-type TypeUTXO uint8
+type TypeUTXO int8
 
 const (
-	P2TR TypeUTXO = iota
+	Unknown TypeUTXO = iota - 1
+	P2TR
 	P2WPKH
 	P2PKH
 	P2SH
-
-	NoType
 )
 
 // CreateSharedSecret
@@ -52,12 +51,6 @@ func CreateSharedSecret(publicComponent [33]byte, secretComponent [32]byte, inpu
 	return ConvertToFixedLength33(sharedSecretKey.SerializeCompressed()), nil
 }
 
-// CreateOutput
-// todo a function that creates an output from a recipient with the necessary data
-func CreateOutput() ([32]byte, error) {
-	return [32]byte{}, nil
-}
-
 // CreateOutputPubKey
 // returns 32 byte x-only pubKey
 func CreateOutputPubKey(sharedSecret [33]byte, receiverSpendPubKey [33]byte, k uint32) ([32]byte, error) {
@@ -89,10 +82,6 @@ func CreateOutputPubKeyTweak(sharedSecret [33]byte, receiverSpendPubKey [33]byte
 
 	// return x-only key
 	return ConvertToFixedLength32(outputPubKey[1:]), tkScalar, nil
-}
-
-func CreatePublicTweakData(publicKeys []*btcec.PublicKey, smallestOutpoint []byte) ([]byte, error) {
-	return nil, nil
 }
 
 func ComputeTK(sharedSecret [33]byte, k uint32) ([32]byte, error) {

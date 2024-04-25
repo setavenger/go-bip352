@@ -8,9 +8,13 @@ as [Inputs For Shared Secret Derivation](https://github.com/josibake/bips/blob/s
 
 ## Todo
 
-- [x] Consider using fixed length byte arrays instead of slice, will help with "type-safety" of keys, hashes, compressed, x-only, scalars  
+### Priority 1
 - [x] Sending vectors passing
 - [x] Receiving vectors passing
-- [ ] Include vin checking module (include functionality that allows for checking whether inputs are eligible according to the BIP)
-- [ ] Standardize errors as types
+- [x] Include vin checking module (include functionality that allows for checking whether inputs are eligible according to the BIP)
+  - should be on par with the reference implementation now
+
+### Priority 2
+- [x] Consider using fixed length byte arrays instead of slice, will help with "type-safety" of keys, hashes, compressed, x-only, scalars
+- [x] Standardize errors as types
 - [ ] Benchmark a map of labels against looping over the slice of labels in matching 

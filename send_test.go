@@ -2,6 +2,7 @@ package gobip352
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"testing"
 )
@@ -9,6 +10,7 @@ import (
 func TestSenderCreateOutputs(t *testing.T) {
 	caseData, err := LoadFullCaseData(t)
 	if err != nil {
+		t.Errorf("Error: %s", err)
 		return
 	}
 
@@ -51,6 +53,7 @@ func TestSenderCreateOutputs(t *testing.T) {
 				scriptPubKey, err = hex.DecodeString(vin.Prevout.ScriptPubKey.Hex)
 				if err != nil {
 					t.Errorf("Error: %s", err)
+					return
 				}
 
 				interimSecKey := ConvertToFixedLength32(secKey)
@@ -70,8 +73,113 @@ func TestSenderCreateOutputs(t *testing.T) {
 				})
 			}
 
-			err = SenderCreateOutputs(recipients, vins, true)
+			err = SenderCreateOutputs(recipients, vins, true, false)
 			if err != nil {
+				t.Errorf("Error: %s", err)
+				return
+			}
+
+			var containsMap = map[string]struct{}{}
+			for _, recipient := range recipients {
+				//t.Logf("B_scan: %x", recipient.ScanPubKey.SerializeCompressed())
+				containsMap[hex.EncodeToString(recipient.Output[:])] = struct{}{}
+			}
+
+			foundCounter := 0
+			for _, targetOutput := range testCase.Expected.Outputs {
+				_, exists := containsMap[targetOutput]
+				if exists {
+					foundCounter++
+				}
+			}
+			if foundCounter != len(recipients) {
+				t.Errorf("Error: did not find enough correct outputs")
+				t.Errorf("Error: Found %d expected %d", foundCounter, len(recipients))
+				return
+			}
+		}
+	}
+}
+
+func TestSenderCreateOutputsWithVinCheck(t *testing.T) {
+	caseData, err := LoadFullCaseData(t)
+	if err != nil {
+		t.Errorf("Error: %s", err)
+		return
+	}
+
+	for i, cases := range caseData {
+		fmt.Println(i, cases.Comment)
+
+		for _, testCase := range cases.Sending {
+
+			var vins []*Vin
+			var recipients []*Recipient
+
+			for _, vin := range testCase.Given.Vin {
+				var txid []byte
+				var secKey []byte
+
+				txid, err = hex.DecodeString(vin.Txid)
+				if err != nil {
+					t.Errorf("Error: %s", err)
+					return
+				}
+
+				secKey, err = hex.DecodeString(vin.PrivateKey)
+				if err != nil {
+					t.Errorf("Error: %s", err)
+					return
+				}
+
+				var scriptPubKey []byte
+				scriptPubKey, err = hex.DecodeString(vin.Prevout.ScriptPubKey.Hex)
+				if err != nil {
+					t.Errorf("Error: %s", err)
+					return
+				}
+				var scriptSig []byte
+				scriptSig, err = hex.DecodeString(vin.ScriptSig)
+				if err != nil {
+					t.Errorf("Error: %s", err)
+					return
+				}
+
+				witness, _ := hex.DecodeString(vin.Txinwitness)
+				var witnessScript [][]byte
+				if len(witness) > 0 {
+					witnessScript, err = ParseWitnessScript(witness)
+					if err != nil {
+						t.Errorf("Error: %s", err)
+						return
+					}
+				}
+
+				interimSecKey := ConvertToFixedLength32(secKey)
+
+				vins = append(vins, &Vin{
+					Txid:         ConvertToFixedLength32(txid),
+					Vout:         vin.Vout,
+					PublicKey:    nil,
+					ScriptPubKey: scriptPubKey,
+					ScriptSig:    scriptSig,
+					Witness:      witnessScript,
+					SecretKey:    &interimSecKey,
+					Taproot:      isP2TR(scriptPubKey),
+				})
+			}
+
+			for _, recipient := range testCase.Given.Recipients {
+				recipients = append(recipients, &Recipient{
+					SilentPaymentAddress: recipient,
+				})
+			}
+
+			err = SenderCreateOutputs(recipients, vins, true, true)
+			if err != nil {
+				if cases.Comment == "No valid inputs, sender generates no outputs" && errors.Is(err, ErrNoEligibleVins) {
+					continue
+				}
 				t.Errorf("Error: %s", err)
 				return
 			}

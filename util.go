@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"golang.org/x/crypto/ripemd160"
@@ -33,7 +32,6 @@ func SumPublicKeys(pubKeys [][33]byte) ([33]byte, error) {
 }
 
 // ReverseBytes reverses the byte slice and returns that same byte slice
-// todo misleading? but practical as it can then be used inline as parameter or assigning
 func ReverseBytes(bytes []byte) []byte {
 	for i, j := 0, len(bytes)-1; i < j; i, j = i+1, j-1 {
 		bytes[i], bytes[j] = bytes[j], bytes[i]
@@ -41,6 +39,7 @@ func ReverseBytes(bytes []byte) []byte {
 	return bytes
 }
 
+// ReverseBytesCopy returns a new reversed byte slice
 func ReverseBytesCopy(bytes []byte) []byte {
 	bytesCopy := make([]byte, len(bytes))
 	copy(bytesCopy, bytes)
@@ -156,7 +155,7 @@ func ConvertPointsToPublicKey(x, y *big.Int) (*btcec.PublicKey, error) {
 // txid has to be in the normal human-readable format
 func FindSmallestOutpoint(vins []*Vin) ([]byte, error) {
 	if len(vins) == 0 {
-		return nil, errors.New("vins were empty")
+		return nil, ErrVinsEmpty
 	}
 
 	var outpoints [][]byte
