@@ -95,7 +95,9 @@ func AddPrivateKeys(secKey1, secKey2 [32]byte) [32]byte {
 
 	newKey := new(big.Int).Add(key1, key2)
 	newKey.Mod(newKey, curveParams.N)
-	return ConvertToFixedLength32(newKey.Bytes())
+	paddedResult := make([]byte, 32)
+	copy(paddedResult[32-len(newKey.Bytes()):], newKey.Bytes())
+	return ConvertToFixedLength32(paddedResult)
 }
 
 // RecursiveAddPrivateKeys this is a simple addition of given privateKeys

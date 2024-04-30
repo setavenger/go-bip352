@@ -225,7 +225,7 @@ func ExtractTweak(caseDataVins []VinReceiveTestCase) ([33]byte, [32]byte, error)
 
 		pubKey, utxoType := ExtractPubKey(vinInner)
 		if utxoType == Unknown {
-			return [33]byte{}, [32]byte{}, noErrJustSkip
+			continue
 		}
 
 		// skip in case no pub key was extracted and no error was thrown
