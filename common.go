@@ -2,8 +2,10 @@ package gobip352
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"math/big"
 )
 
 type TypeUTXO int8
@@ -71,6 +73,7 @@ func CreateOutputPubKeyTweak(sharedSecret [33]byte, receiverSpendPubKey [33]byte
 		return [32]byte{}, [32]byte{}, err
 	}
 
+	// this does not fail automatically if scalar is 0 or > curve.N; ComputeTK checks for this
 	// t_k * G
 	_, tkScalarPubKey := btcec.PrivKeyFromBytes(tkScalar[:])
 
@@ -93,6 +96,13 @@ func ComputeTK(sharedSecret [33]byte, k uint32) ([32]byte, error) {
 	}
 	buffer.Write(serializedK)
 	tKScalar := TaggedHash("BIP0352/SharedSecret", buffer.Bytes())
+	if bytes.Equal(tKScalar[:], bytes.Repeat([]byte{0}, 32)) {
+		return [32]byte{}, errors.New("invalid tweak, was zero")
+	}
+
+	if btcec.S256().N.Cmp(new(big.Int).SetBytes(tKScalar[:])) <= 0 {
+		return [32]byte{}, errors.New(fmt.Sprintf("Err: invalid tweak, was equal or greater than curve order %x", tKScalar[:]))
+	}
 	return tKScalar, err
 }
 

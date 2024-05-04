@@ -42,7 +42,7 @@ func TestReceiverScanTransaction(t *testing.T) {
 			_, spendPubKey := btcec.PrivKeyFromBytes(secKeySpend[:])
 
 			// compute label data
-			var labels []Label
+			var labels []*Label
 			for _, labelInt := range testCase.Given.Labels {
 				var label Label
 				label, err = CreateLabel(secKeyScan, labelInt)
@@ -68,7 +68,7 @@ func TestReceiverScanTransaction(t *testing.T) {
 
 				label.Address = labeledAddress
 
-				labels = append(labels, label)
+				labels = append(labels, &label)
 			}
 
 			// check the generated addresses

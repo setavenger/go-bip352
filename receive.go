@@ -24,7 +24,7 @@ type Label struct {
 // labels: existing label public keys as bytes [wallets should always check for the change label]
 // publicComponent: either A_sum or tweaked (A_sum * input_hash) if tweaked inputHash should be nil or the computation will be flawed
 // inputHash: 32 byte can be nil if publicComponent is a tweak and already includes the input_hash
-func ReceiverScanTransaction(scanKey [32]byte, receiverSpendPubKey [33]byte, labels []Label, txOutputs [][32]byte, publicComponent [33]byte, inputHash *[32]byte) ([]*FoundOutput, error) {
+func ReceiverScanTransaction(scanKey [32]byte, receiverSpendPubKey [33]byte, labels []*Label, txOutputs [][32]byte, publicComponent [33]byte, inputHash *[32]byte) ([]*FoundOutput, error) {
 
 	// todo should probably check inputs before computation especially the labels
 	var foundOutputs []*FoundOutput
@@ -118,7 +118,7 @@ func ReceiverScanTransaction(scanKey [32]byte, receiverSpendPubKey [33]byte, lab
 	return foundOutputs, nil
 }
 
-func MatchLabels(txOutput, pk [33]byte, labels []Label) (*Label, error) {
+func MatchLabels(txOutput, pk [33]byte, labels []*Label) (*Label, error) {
 	// subtraction is adding a negated value
 	pkNeg, err := NegatePublicKey(pk)
 	if err != nil {
@@ -133,7 +133,7 @@ func MatchLabels(txOutput, pk [33]byte, labels []Label) (*Label, error) {
 
 	for _, label := range labels {
 		if bytes.Equal(labelMatch[1:], label.PubKey[1:]) {
-			return &label, nil
+			return label, nil
 		}
 	}
 
