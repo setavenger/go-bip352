@@ -1,4 +1,4 @@
-package gobip352
+package bip352
 
 import (
 	"github.com/btcsuite/btcd/btcutil"
