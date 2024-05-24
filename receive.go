@@ -29,13 +29,13 @@ func ReceiverScanTransaction(scanKey [32]byte, receiverSpendPubKey [33]byte, lab
 	// todo should probably check inputs before computation especially the labels
 	var foundOutputs []*FoundOutput
 
+	sharedSecret, err := CreateSharedSecret(publicComponent, scanKey, inputHash)
+	if err != nil {
+		return nil, err
+	}
+
 	var k uint32 = 0
 	for true {
-		sharedSecret, err := CreateSharedSecret(publicComponent, scanKey, inputHash)
-		if err != nil {
-			return nil, err
-		}
-
 		var outputPubKey [32]byte
 		var tweak [32]byte
 		outputPubKey, tweak, err = CreateOutputPubKeyTweak(sharedSecret, receiverSpendPubKey, k)
