@@ -13,7 +13,8 @@ This library is not a full wallet.
   - should be on par with the reference implementation now
 
 ### Priority 2
+- [ ] Add error logging option
 - [x] Consider using fixed length byte arrays instead of slice, will help with "type-safety" of keys, hashes, compressed, x-only, scalars
 - [x] Standardize errors as types
-- [ ] Rename package on GitHub to go-bip352 and import as bip352
+- [x] Rename package on GitHub to go-bip352 and import as bip352
 - [ ] Benchmark a map of labels against looping over the slice of labels in matching 

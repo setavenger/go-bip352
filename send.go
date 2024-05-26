@@ -73,6 +73,9 @@ func SenderCreateOutputs(recipients []*Recipient, vins []*Vin, mainnet bool, che
 	// extract the pubKeys from the SP address
 	for _, recipient := range recipients {
 		scanPubKeyBytes, spendPubKeyBytes, err := DecodeSilentPaymentAddressToKeys(recipient.SilentPaymentAddress, mainnet)
+		if err != nil {
+			return err
+		}
 		scanPubKey, err := btcec.ParsePubKey(scanPubKeyBytes[:])
 		if err != nil {
 			return err
@@ -116,6 +119,11 @@ func checkToNegate(secretKey [32]byte) [32]byte {
 	} else {
 		return secretKey
 	}
+}
+
+func NegateSecretKey(secretKey [32]byte) [32]byte {
+	sk, _ := btcec.PrivKeyFromBytes(secretKey[:])
+	return sk.Key.Negate().Bytes()
 }
 
 func matchRecipients(recipients []*Recipient) map[[33]byte][]*Recipient {
