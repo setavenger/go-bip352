@@ -6,10 +6,11 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/btcsuite/btcd/btcec/v2"
-	"golang.org/x/crypto/ripemd160"
 	"math/big"
 	"sort"
+
+	"github.com/btcsuite/btcd/btcec/v2"
+	"golang.org/x/crypto/ripemd160"
 )
 
 func SumPublicKeys(pubKeys [][33]byte) ([33]byte, error) {
@@ -256,7 +257,7 @@ func ConvertToFixedLength32(input []byte) [32]byte {
 
 func ConvertToFixedLength33(input []byte) [33]byte {
 	if len(input) != 33 {
-		panic(fmt.Sprintf("wrong length expected 32 got %d", len(input)))
+		panic(fmt.Sprintf("wrong length expected 33 got %d", len(input)))
 	}
 	var output [33]byte
 	copy(output[:], input)
