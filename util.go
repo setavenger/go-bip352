@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	"sort"
@@ -134,19 +133,12 @@ func CreateLabelPublicKey(labelTweak [32]byte) [33]byte {
 }
 
 func ConvertPointsToPublicKey(x, y *big.Int) (*btcec.PublicKey, error) {
-	// see how this can be written properly, but there does not seem to be a simple given API for that
-	// in case big int omits leading zero
+	pubkeyBytes := make([]byte, 65)
+	pubkeyBytes[0] = 0x04
+	x.FillBytes(pubkeyBytes[1:33])
+	y.FillBytes(pubkeyBytes[33:])
 
-	sX := fmt.Sprintf("%x", x)
-	sY := fmt.Sprintf("%x", y)
-	sX = fmt.Sprintf("%064s", sX)
-	sY = fmt.Sprintf("%064s", sY)
-	decodeString, err := hex.DecodeString(fmt.Sprintf("04%s%s", sX, sY))
-	if err != nil {
-		return nil, err
-	}
-
-	finalPubKey, err := btcec.ParsePubKey(decodeString)
+	finalPubKey, err := btcec.ParsePubKey(pubkeyBytes)
 	if err != nil {
 		return nil, err
 	}
