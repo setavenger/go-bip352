@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	"sort"
@@ -23,7 +22,7 @@ func SumPublicKeys(pubKeys [][33]byte) ([33]byte, error) {
 		}
 
 		var err error
-		lastPubKeyBytes, err = AddPublicKeys(lastPubKeyBytes, bytesPubKey)
+		lastPubKeyBytes, err = AddPublicKeys(&lastPubKeyBytes, &bytesPubKey)
 		if err != nil {
 			return [33]byte{}, err
 		}
@@ -66,41 +65,6 @@ func SerU32(num uint32) ([]byte, error) {
 	return buffer.Bytes(), err
 }
 
-func AddPublicKeys(publicKeyBytes1, publicKeyBytes2 [33]byte) ([33]byte, error) {
-	publicKey1, err := btcec.ParsePubKey(publicKeyBytes1[:])
-	if err != nil {
-		return [33]byte{}, err
-	}
-
-	publicKey2, err := btcec.ParsePubKey(publicKeyBytes2[:])
-	if err != nil {
-		return [33]byte{}, err
-	}
-
-	sumX, sumY := btcec.S256().Add(publicKey1.X(), publicKey1.Y(), publicKey2.X(), publicKey2.Y())
-
-	finalPubKey, err := ConvertPointsToPublicKey(sumX, sumY)
-	if err != nil {
-		return [33]byte{}, err
-	}
-
-	return ConvertToFixedLength33(finalPubKey.SerializeCompressed()), nil
-}
-
-func AddPrivateKeys(secKey1, secKey2 [32]byte) [32]byte {
-	// Convert hex strings to big integers
-	key1 := new(big.Int).SetBytes(secKey1[:])
-	key2 := new(big.Int).SetBytes(secKey2[:])
-
-	curveParams := btcec.S256().Params()
-
-	newKey := new(big.Int).Add(key1, key2)
-	newKey.Mod(newKey, curveParams.N)
-	paddedResult := make([]byte, 32)
-	copy(paddedResult[32-len(newKey.Bytes()):], newKey.Bytes())
-	return ConvertToFixedLength32(paddedResult)
-}
-
 // RecursiveAddPrivateKeys this is a simple addition of given privateKeys
 // Keep in mind that this function does not negate privateKeys this has to be done
 // before calling this function
@@ -111,42 +75,19 @@ func RecursiveAddPrivateKeys(secretKeys [][32]byte) [32]byte {
 			secretKeysSum = secretKeys[0]
 			continue
 		}
-		secretKeysSum = AddPrivateKeys(secretKeysSum, secretKeys[i])
+		AddPrivateKeys(&secretKeysSum, &secretKeys[i])
 	}
 
 	return secretKeysSum
 }
 
-func MultPrivateKeys(secKey1, secKey2 [32]byte) [32]byte {
-	key1 := new(big.Int).SetBytes(secKey1[:])
-	key2 := new(big.Int).SetBytes(secKey2[:])
-
-	curveParams := btcec.S256().Params()
-
-	newKey := new(big.Int).Mul(key1, key2)
-	newKey.Mod(newKey, curveParams.N)
-	return ConvertToFixedLength32(newKey.Bytes())
-}
-
-func CreateLabelPublicKey(labelTweak [32]byte) [33]byte {
-	_, pubKey := btcec.PrivKeyFromBytes(labelTweak[:])
-	return ConvertToFixedLength33(pubKey.SerializeCompressed())
-}
-
 func ConvertPointsToPublicKey(x, y *big.Int) (*btcec.PublicKey, error) {
-	// see how this can be written properly, but there does not seem to be a simple given API for that
-	// in case big int omits leading zero
+	pubkeyBytes := make([]byte, 65)
+	pubkeyBytes[0] = 0x04
+	x.FillBytes(pubkeyBytes[1:33])
+	y.FillBytes(pubkeyBytes[33:])
 
-	sX := fmt.Sprintf("%x", x)
-	sY := fmt.Sprintf("%x", y)
-	sX = fmt.Sprintf("%064s", sX)
-	sY = fmt.Sprintf("%064s", sY)
-	decodeString, err := hex.DecodeString(fmt.Sprintf("04%s%s", sX, sY))
-	if err != nil {
-		return nil, err
-	}
-
-	finalPubKey, err := btcec.ParsePubKey(decodeString)
+	finalPubKey, err := btcec.ParsePubKey(pubkeyBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -194,21 +135,6 @@ func Hash160(data []byte) []byte {
 	ripemd160Hasher := ripemd160.New()
 	ripemd160Hasher.Write(sha256Hash[:]) // Hash the SHA256 hash
 	return ripemd160Hasher.Sum(nil)
-}
-
-func NegatePublicKey(pk [33]byte) ([33]byte, error) {
-	pubKey, err := btcec.ParsePubKey(pk[:])
-	if err != nil {
-		return [33]byte{}, err
-	}
-	curve := btcec.S256()
-	interim := new(big.Int).Sub(curve.Params().P, pubKey.Y())
-	newY := new(big.Int).Mod(interim, curve.Params().P)
-	newKey, err := ConvertPointsToPublicKey(pubKey.X(), newY)
-	if err != nil {
-		return [33]byte{}, err
-	}
-	return ConvertToFixedLength33(newKey.SerializeCompressed()), err
 }
 
 // ParseWitnessScript parses a hex-encoded witness script and returns the actual witness data as a list

@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
-	"fmt"
-	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcutil/bech32"
 	"math/rand"
 	"testing"
+
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil/bech32"
 )
 
 func TestFullAddressEncoding(t *testing.T) {
@@ -21,7 +21,7 @@ func TestFullAddressEncoding(t *testing.T) {
 		for _, testCase := range cases.Receiving {
 			var containsMap = map[string]struct{}{}
 
-			fmt.Println(cases.Comment)
+			// fmt.Println(cases.Comment)
 			var spendSecKey []byte
 			var scanSecKey []byte
 			spendSecKey, err = hex.DecodeString(testCase.Given.KeyMaterial.SpendPrivKey)

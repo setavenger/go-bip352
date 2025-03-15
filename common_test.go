@@ -3,7 +3,6 @@ package bip352
 import (
 	"bytes"
 	"encoding/hex"
-	"fmt"
 	"testing"
 )
 
@@ -53,7 +52,7 @@ func TestFindSmallestOutpoint(t *testing.T) {
 		t.Errorf("Error: %s", err)
 		return
 	}
-	fmt.Printf("%x\n", smallestOutpoint)
+	// fmt.Printf("%x\n", smallestOutpoint)
 
 	goal, _ := hex.DecodeString("3e9e968c097be878153614bbd1825ed905c8dea9b56df11414c1da35212465307f010000")
 	if !bytes.Equal(smallestOutpoint, goal) {
@@ -82,7 +81,7 @@ func TestFindSmallestOutpoint(t *testing.T) {
 		t.Errorf("Error: %s", err)
 		return
 	}
-	fmt.Printf("%x\n", smallestOutpoint)
+	// fmt.Printf("%x\n", smallestOutpoint)
 
 	goal, _ = hex.DecodeString("169e1e83e930853391bc6f35f605c6754cfead57cf8387639d3b4096c54f18f403000000")
 	if !bytes.Equal(smallestOutpoint, goal) {
@@ -111,7 +110,7 @@ func TestFindSmallestOutpoint(t *testing.T) {
 		t.Errorf("Error: %s", err)
 		return
 	}
-	fmt.Printf("%x\n", smallestOutpoint)
+	// fmt.Printf("%x\n", smallestOutpoint)
 
 	goal, _ = hex.DecodeString("169e1e83e930853391bc6f35f605c6754cfead57cf8387639d3b4096c54f18f4aa010000")
 	if !bytes.Equal(smallestOutpoint, goal) {

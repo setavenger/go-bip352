@@ -28,13 +28,19 @@ func CreateAddress(scanPubKeyBytes, bMKeyBytes [33]byte, mainnet bool, version u
 	}
 }
 
-func CreateLabeledAddress(scanPubKeyBytes, spendPubKeyBytes [33]byte, mainnet bool, version uint8, scanSecKey [32]byte, m uint32) (string, error) {
+func CreateLabeledAddress(
+	scanPubKeyBytes, spendPubKeyBytes [33]byte,
+	mainnet bool,
+	version uint8,
+	scanSecKey [32]byte,
+	m uint32,
+) (string, error) {
 	labelTweak, err := CreateLabelTweak(scanSecKey, m)
 	if err != nil {
 		return "", err
 	}
 
-	label := CreateLabelPublicKey(labelTweak)
+	label := PubKeyFromSecKey(&labelTweak)
 
 	// todo does this need some sort of check additional check (e.g. point on the curve)?
 	bMKeyBytes, err := CreateLabelledSpendPubKey(spendPubKeyBytes, label)
@@ -79,7 +85,13 @@ func DecodeSilentPaymentAddress(address string, mainnet bool) (string, []byte, u
 	return hrp, data, version, nil
 }
 
-func DecodeSilentPaymentAddressToKeys(address string, mainnet bool) (scanPubKeyBytes, spendPubKeyBytes [33]byte, err error) {
+func DecodeSilentPaymentAddressToKeys(
+	address string,
+	mainnet bool,
+) (
+	scanPubKeyBytes, spendPubKeyBytes [33]byte,
+	err error,
+) {
 	_, data, _, err := DecodeSilentPaymentAddress(address, mainnet)
 	if err != nil {
 		return [33]byte{}, [33]byte{}, err
@@ -92,5 +104,5 @@ func DecodeSilentPaymentAddressToKeys(address string, mainnet bool) (scanPubKeyB
 //
 // B_m = B_spend + label
 func CreateLabelledSpendPubKey(spendPubKey, labelPubKey [33]byte) ([33]byte, error) {
-	return AddPublicKeys(spendPubKey, labelPubKey)
+	return AddPublicKeys(&spendPubKey, &labelPubKey)
 }

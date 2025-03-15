@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"math/big"
+
+	"github.com/btcsuite/btcd/btcec/v2"
 )
 
 type TypeUTXO int8
@@ -17,41 +18,6 @@ const (
 	P2PKH
 	P2SH
 )
-
-// CreateSharedSecret
-// The public component is dependent on whether this function is called from the sender or receiver side.
-// The input_hash is the same for both sides.
-// The input_hash can be nil if the publicComponent already incorporates the inputHash in case of a tweak as it would be for light clients
-//
-// For the sender publicComponent is B_scan and secretComponent is a_sum
-//
-// shared_secret = (a_sum * input_hash) * B_scan   [Sender]
-//
-// For the receiver publicComponent is A_sum and the secretComponent is b_scan
-//
-// shared_secret = (b_scan * input_hash) * A_sum   [Receiver, Full node scenario]
-//
-// shared_secret = b_scan * A_tweaked   [Receiver, Light client scenario]
-func CreateSharedSecret(publicComponent [33]byte, secretComponent [32]byte, inputHash *[32]byte) ([33]byte, error) {
-	pubKey, err := btcec.ParsePubKey(publicComponent[:])
-	if err != nil {
-		return [33]byte{}, err
-	}
-
-	if inputHash != nil {
-		secretComponent = MultPrivateKeys(secretComponent, *inputHash)
-	}
-
-	// Compute the scalar multiplication a * B (ECDH shared secret)
-	x, y := btcec.S256().ScalarMult(pubKey.X(), pubKey.Y(), secretComponent[:])
-
-	sharedSecretKey, err := ConvertPointsToPublicKey(x, y)
-	if err != nil {
-		return [33]byte{}, err
-	}
-
-	return ConvertToFixedLength33(sharedSecretKey.SerializeCompressed()), nil
-}
 
 // CreateOutputPubKey
 // returns 32 byte x-only pubKey
@@ -75,10 +41,10 @@ func CreateOutputPubKeyTweak(sharedSecret [33]byte, receiverSpendPubKey [33]byte
 
 	// this does not fail automatically if scalar is 0 or > curve.N; ComputeTK checks for this
 	// t_k * G
-	_, tkScalarPubKey := btcec.PrivKeyFromBytes(tkScalar[:])
+	tkScalarPubKey := PubKeyFromSecKey(&tkScalar)
 
 	// P_output_xonly = B_spend + t_k * G
-	outputPubKey, err := AddPublicKeys(receiverSpendPubKey, ConvertToFixedLength33(tkScalarPubKey.SerializeCompressed()))
+	outputPubKey, err := AddPublicKeys(&receiverSpendPubKey, &tkScalarPubKey)
 	if err != nil {
 		return [32]byte{}, [32]byte{}, err
 	}
@@ -122,7 +88,7 @@ func CreateLabel(scanSecKey [32]byte, m uint32) (Label, error) {
 		return Label{}, err
 	}
 
-	labelPubKey := CreateLabelPublicKey(labelTweak)
+	labelPubKey := PubKeyFromSecKey(&labelTweak)
 
 	return Label{Tweak: labelTweak, PubKey: labelPubKey, M: m}, err
 }

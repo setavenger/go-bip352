@@ -6,37 +6,35 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"testing"
+
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
-	"testing"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReceiverScanTransaction(t *testing.T) {
-
 	caseData, err := LoadFullCaseData(t)
 	if err != nil {
 		return
 	}
 
 	for iOuter, cases := range caseData {
+		// for _, cases := range caseData {
 		for _, testCase := range cases.Receiving {
 			fmt.Println(iOuter, cases.Comment)
 
 			// extract privateKeys
 			var secKeyScanBytes []byte
 			secKeyScanBytes, err = hex.DecodeString(testCase.Given.KeyMaterial.ScanPrivKey)
-			if err != nil {
-				t.Errorf("Error: %s", err)
-				return
-			}
+			require.NoError(t, err)
+
 			secKeyScan := ConvertToFixedLength32(secKeyScanBytes)
 			// extract keys
 			var secKeySpendBytes []byte
 			secKeySpendBytes, err = hex.DecodeString(testCase.Given.KeyMaterial.SpendPrivKey)
-			if err != nil {
-				t.Errorf("Error: %s", err)
-				return
-			}
+			require.NoError(t, err)
+
 			secKeySpend := ConvertToFixedLength32(secKeySpendBytes)
 			_, scanPubKey := btcec.PrivKeyFromBytes(secKeyScan[:])
 			_, spendPubKey := btcec.PrivKeyFromBytes(secKeySpend[:])
@@ -46,10 +44,7 @@ func TestReceiverScanTransaction(t *testing.T) {
 			for _, labelInt := range testCase.Given.Labels {
 				var label Label
 				label, err = CreateLabel(secKeyScan, labelInt)
-				if err != nil {
-					t.Errorf("Error: %s", err)
-					return
-				}
+				require.NoError(t, err)
 
 				var labeledAddress string
 				// todo not happy with this API yet should be able to create an address without introducing the secretKey again
@@ -61,10 +56,7 @@ func TestReceiverScanTransaction(t *testing.T) {
 					secKeyScan,
 					labelInt,
 				)
-				if err != nil {
-					t.Errorf("Error: %s", err)
-					return
-				}
+				require.NoError(t, err)
 
 				label.Address = labeledAddress
 
@@ -80,10 +72,7 @@ func TestReceiverScanTransaction(t *testing.T) {
 				true,
 				0,
 			)
-			if err != nil {
-				t.Errorf("Error: %s", err)
-				return
-			}
+			require.NoError(t, err)
 
 			containsMap[address] = struct{}{}
 
@@ -104,10 +93,8 @@ func TestReceiverScanTransaction(t *testing.T) {
 			for _, output := range testCase.Given.Outputs {
 				var decodedString []byte
 				decodedString, err = hex.DecodeString(output)
-				if err != nil {
-					t.Errorf("Error: %s", err)
-					return
-				}
+				require.NoError(t, err)
+
 				txOutputs = append(txOutputs, ConvertToFixedLength32(decodedString))
 			}
 
@@ -119,7 +106,7 @@ func TestReceiverScanTransaction(t *testing.T) {
 				t.Errorf("Error: %s", err)
 				return
 			} else if err != nil && errors.Is(err, noErrJustSkip) {
-				t.Log("we skipped")
+				fmt.Println("we skipped")
 				continue
 			}
 
@@ -132,10 +119,7 @@ func TestReceiverScanTransaction(t *testing.T) {
 				publicComponent,
 				&inputHash,
 			)
-			if err != nil {
-				t.Errorf("Error: %s", err)
-				return
-			}
+			require.NoError(t, err)
 
 			if len(foundOutputs) != len(testCase.Expected.Outputs) {
 				t.Errorf("Error: wrong number outputs found %d != %d", len(foundOutputs), len(testCase.Expected.Outputs))
@@ -164,16 +148,17 @@ func TestReceiverScanTransaction(t *testing.T) {
 				msgHash := sha256.Sum256(message)
 				auxHash := sha256.Sum256(aux)
 
-				fullPrivKeyBytes := AddPrivateKeys(secKeySpend, foundOutput.SecKeyTweak)
-				fullPrivKey, _ := btcec.PrivKeyFromBytes(fullPrivKeyBytes[:])
+				var fullKeyBytes [32]byte
+				copy(fullKeyBytes[:], secKeySpend[:])
+
+				err := AddPrivateKeys(&fullKeyBytes, &foundOutput.SecKeyTweak)
+				require.NoError(t, err)
+				fullPrivKey, _ := btcec.PrivKeyFromBytes(fullKeyBytes[:])
 
 				// Sign the message with auxiliary data influencing the nonce
 				var signature *schnorr.Signature
 				signature, err = schnorr.Sign(fullPrivKey, msgHash[:], schnorr.CustomNonce(auxHash))
-				if err != nil {
-					t.Errorf("Error: %s", err)
-					return
-				}
+				require.NoError(t, err)
 
 				var parsedOutput *btcec.PublicKey
 				parsedOutput, err = btcec.ParsePubKey(append([]byte{0x02}, foundOutput.Output[:]...))
@@ -183,11 +168,127 @@ func TestReceiverScanTransaction(t *testing.T) {
 				}
 				valid := signature.Verify(msgHash[:], parsedOutput)
 				if !valid {
+					fmt.Printf("%d %x\n", iInner, foundOutput.Output)
+					fmt.Printf("%d %x\n", iInner, foundOutput.SecKeyTweak)
+					panic("error")
 					t.Errorf("Error: signature was not valid")
 					return
 				}
 			}
 		}
+	}
+}
+
+func BenchmarkReceiverScanTransaction(b *testing.B) {
+	caseData, err := LoadFullCaseData(b)
+	require.NoError(b, err)
+
+	iOuter := 17
+	cases := caseData[iOuter]
+	testCase := cases.Receiving[0]
+
+	fmt.Println(iOuter, cases.Comment)
+
+	// extract privateKeys
+	var secKeyScanBytes []byte
+	secKeyScanBytes, err = hex.DecodeString(testCase.Given.KeyMaterial.ScanPrivKey)
+	require.NoError(b, err)
+
+	secKeyScan := ConvertToFixedLength32(secKeyScanBytes)
+	// extract keys
+	var secKeySpendBytes []byte
+	secKeySpendBytes, err = hex.DecodeString(testCase.Given.KeyMaterial.SpendPrivKey)
+	require.NoError(b, err)
+
+	secKeySpend := ConvertToFixedLength32(secKeySpendBytes)
+	_, scanPubKey := btcec.PrivKeyFromBytes(secKeyScan[:])
+	_, spendPubKey := btcec.PrivKeyFromBytes(secKeySpend[:])
+
+	// compute label data
+	var labels []*Label
+	for _, labelInt := range testCase.Given.Labels {
+		var label Label
+		label, err = CreateLabel(secKeyScan, labelInt)
+		require.NoError(b, err)
+
+		var labeledAddress string
+		// todo not happy with this API yet should be able to create an address without introducing the secretKey again
+		labeledAddress, err = CreateLabeledAddress(
+			ConvertToFixedLength33(scanPubKey.SerializeCompressed()),
+			ConvertToFixedLength33(spendPubKey.SerializeCompressed()),
+			true,
+			0,
+			secKeyScan,
+			labelInt,
+		)
+		require.NoError(b, err)
+
+		label.Address = labeledAddress
+
+		labels = append(labels, &label)
+	}
+	//
+	// // check the generated addresses
+	// containsMap := make(map[string]struct{})
+	// var address string
+	// address, err = CreateAddress(
+	// 	ConvertToFixedLength33(scanPubKey.SerializeCompressed()),
+	// 	ConvertToFixedLength33(spendPubKey.SerializeCompressed()),
+	// 	true,
+	// 	0,
+	// )
+	// if err != nil {
+	// 	b.Errorf("Error: %s", err)
+	// 	return
+	// }
+
+	// containsMap[address] = struct{}{}
+	//
+	// for _, label := range labels {
+	// 	containsMap[label.Address] = struct{}{}
+	// }
+	//
+	// for _, targetAddress := range testCase.Expected.Addresses {
+	// 	_, exists := containsMap[targetAddress]
+	// 	if !exists {
+	// 		b.Errorf("Error: missing %s", targetAddress)
+	// 		return
+	// 	}
+	// }
+
+	// get the txOutputs of the transactions
+	var txOutputs [][32]byte
+	for _, output := range testCase.Given.Outputs {
+		var decodedString []byte
+		decodedString, err = hex.DecodeString(output)
+		require.NoError(b, err)
+
+		txOutputs = append(txOutputs, ConvertToFixedLength32(decodedString))
+	}
+
+	// compute tweak data
+	var publicComponent [33]byte
+	var inputHash [32]byte
+	publicComponent, inputHash, err = ExtractTweak(testCase.Given.Vin)
+	if err != nil && !errors.Is(err, noErrJustSkip) {
+		b.Errorf("Error: %s", err)
+		return
+	} else if err != nil && errors.Is(err, noErrJustSkip) {
+		b.Log("we skipped")
+		return
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_, _ = ReceiverScanTransaction(
+			secKeyScan,
+			ConvertToFixedLength33(spendPubKey.SerializeCompressed()),
+			labels,
+			txOutputs,
+			publicComponent,
+			&inputHash,
+		)
 	}
 }
 

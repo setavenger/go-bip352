@@ -2,8 +2,10 @@ package bip352
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 type VinReceiveTestCase struct {
@@ -64,25 +66,18 @@ type FullTestCase struct {
 	} `json:"receiving"`
 }
 
-func LoadFullCaseData(t *testing.T) ([]FullTestCase, error) {
+func LoadFullCaseData(t testing.TB) ([]FullTestCase, error) {
 	filePath := "./test_data/send_and_receive_test_vectors_modified.json"
 
 	// Read the JSON file
-	data, err := ioutil.ReadFile(filePath)
-	//if err != nil {
-	//	t.Errorf("Error reading JSON file: %s", err)
-	//	return nil, err
-	//}
+	data, err := os.ReadFile(filePath)
+	require.NoError(t, err)
 
 	// Assuming `testCases` is the variable for storing the unmarshaled data
 	var testCases []FullTestCase
 
 	// Unmarshal the JSON data into the struct
 	err = json.Unmarshal(data, &testCases)
-	//if err != nil {
-	//	t.Errorf("Error unmarshaling JSON: %s", err)
-	//	return nil, err
-	//}
 
 	return testCases, err
 }
