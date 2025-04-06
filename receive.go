@@ -24,7 +24,14 @@ type Label struct {
 // labels: existing label public keys as bytes [wallets should always check for the change label]
 // publicComponent: either A_sum or tweaked (A_sum * input_hash) if tweaked inputHash should be nil or the computation will be flawed
 // inputHash: 32 byte can be nil if publicComponent is a tweak and already includes the input_hash
-func ReceiverScanTransaction(scanKey [32]byte, receiverSpendPubKey [33]byte, labels []*Label, txOutputs [][32]byte, publicComponent [33]byte, inputHash *[32]byte) ([]*FoundOutput, error) {
+func ReceiverScanTransaction(
+	scanKey [32]byte,
+	receiverSpendPubKey [33]byte,
+	labels []*Label,
+	txOutputs [][32]byte,
+	publicComponent [33]byte,
+	inputHash *[32]byte,
+) ([]*FoundOutput, error) {
 
 	// todo should probably check inputs before computation especially the labels
 	var foundOutputs []*FoundOutput

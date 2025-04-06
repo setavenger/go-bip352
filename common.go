@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"math/big"
+
+	"github.com/btcsuite/btcd/btcec/v2"
 )
 
 type TypeUTXO int8
@@ -32,7 +33,11 @@ const (
 // shared_secret = (b_scan * input_hash) * A_sum   [Receiver, Full node scenario]
 //
 // shared_secret = b_scan * A_tweaked   [Receiver, Light client scenario]
-func CreateSharedSecret(publicComponent [33]byte, secretComponent [32]byte, inputHash *[32]byte) ([33]byte, error) {
+func CreateSharedSecret(
+	publicComponent [33]byte,
+	secretComponent [32]byte,
+	inputHash *[32]byte,
+) ([33]byte, error) {
 	pubKey, err := btcec.ParsePubKey(publicComponent[:])
 	if err != nil {
 		return [33]byte{}, err
@@ -55,7 +60,11 @@ func CreateSharedSecret(publicComponent [33]byte, secretComponent [32]byte, inpu
 
 // CreateOutputPubKey
 // returns 32 byte x-only pubKey
-func CreateOutputPubKey(sharedSecret [33]byte, receiverSpendPubKey [33]byte, k uint32) ([32]byte, error) {
+func CreateOutputPubKey(
+	sharedSecret [33]byte,
+	receiverSpendPubKey [33]byte,
+	k uint32,
+) ([32]byte, error) {
 	// Calculate and return P_output_xonly = B_spend + t_k * G
 	output, _, err := CreateOutputPubKeyTweak(sharedSecret, receiverSpendPubKey, k)
 	if err != nil {

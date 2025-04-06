@@ -132,6 +132,26 @@ func CreateLabelPublicKey(labelTweak [32]byte) [33]byte {
 	return ConvertToFixedLength33(pubKey.SerializeCompressed())
 }
 
+func TweakPubkey(
+	publicComponent [33]byte,
+	secretComponent [32]byte,
+) ([33]byte, error) {
+	pubKey, err := btcec.ParsePubKey(publicComponent[:])
+	if err != nil {
+		return [33]byte{}, err
+	}
+
+	// Compute the scalar multiplication a * B
+	x, y := btcec.S256().ScalarMult(pubKey.X(), pubKey.Y(), secretComponent[:])
+
+	sharedSecretKey, err := ConvertPointsToPublicKey(x, y)
+	if err != nil {
+		return [33]byte{}, err
+	}
+
+	return ConvertToFixedLength33(sharedSecretKey.SerializeCompressed()), nil
+}
+
 func ConvertPointsToPublicKey(x, y *big.Int) (*btcec.PublicKey, error) {
 	pubkeyBytes := make([]byte, 65)
 	pubkeyBytes[0] = 0x04

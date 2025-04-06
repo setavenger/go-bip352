@@ -94,3 +94,16 @@ func DecodeSilentPaymentAddressToKeys(address string, mainnet bool) (scanPubKeyB
 func CreateLabelledSpendPubKey(spendPubKey, labelPubKey [33]byte) ([33]byte, error) {
 	return AddPublicKeys(spendPubKey, labelPubKey)
 }
+
+// IsSilentPaymentAddress determines whether an address is a silent payment address.
+// Works only for silent payment v0
+func IsSilentPaymentAddress(address string) bool {
+	// only works for v1
+	if len(address) == 116 && address[:2] == "sp" {
+		return true
+	}
+	if len(address) == 117 && address[:3] == "tsp" {
+		return true
+	}
+	return false
+}
