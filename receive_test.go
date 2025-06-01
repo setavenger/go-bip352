@@ -154,7 +154,7 @@ func TestReceiverScanTransaction(t *testing.T) {
 				var fullKeyBytes [32]byte
 				copy(fullKeyBytes[:], secKeySpend[:])
 
-				err := AddPrivateKeys(&fullKeyBytes, &foundOutput.SecKeyTweak)
+				err = AddPrivateKeys(&fullKeyBytes, &foundOutput.SecKeyTweak)
 				require.NoError(t, err)
 				fullPrivKey, _ := btcec.PrivKeyFromBytes(fullKeyBytes[:])
 

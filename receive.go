@@ -145,7 +145,7 @@ func MatchLabels(txOutput, pk [33]byte, labels []*Label) (*Label, error) {
 		return nil, err
 	}
 
-	// todo is this the best place to prepend to compressed
+	// todo: is this the best place to prepend to compressed
 	labelMatch, err := AddPublicKeys(&txOutput, &pkNeg)
 	if err != nil {
 		return nil, err

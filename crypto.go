@@ -49,7 +49,7 @@ func AddPublicKeys(publicKeyBytes1, publicKeyBytes2 *[33]byte) ([33]byte, error)
 }
 
 func AddPrivateKeys(secKey1, secKey2 *[32]byte) error {
-	return golibsecp256k1.SecKeyAdd(secKey1, *secKey2)
+	return golibsecp256k1.SecKeyAdd(secKey1, secKey2)
 }
 
 func NegatePublicKey(pk *[33]byte) error {

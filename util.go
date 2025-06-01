@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	"github.com/btcsuite/btcd/btcec/v2"
+	golibsecp256k1 "github.com/setavenger/go-libsecp256k1"
 )
 
 var (
@@ -59,7 +60,7 @@ func RecursiveAddPrivateKeys(secretKeys [][32]byte) [32]byte {
 			secretKeysSum = secretKeys[0]
 			continue
 		}
-		AddPrivateKeys(&secretKeysSum, &secretKeys[i])
+		golibsecp256k1.SecKeyAdd(&secretKeysSum, &secretKeys[i])
 	}
 
 	return secretKeysSum
