@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+
+	"github.com/setavenger/blindbit-lib/utils"
 )
 
 func TestSenderCreateOutputs(t *testing.T) {
@@ -56,10 +58,10 @@ func TestSenderCreateOutputs(t *testing.T) {
 					return
 				}
 
-				interimSecKey := ConvertToFixedLength32(secKey)
+				interimSecKey := utils.ConvertToFixedLength32(secKey)
 
 				vins = append(vins, &Vin{
-					Txid:      ConvertToFixedLength32(txid),
+					Txid:      utils.ConvertToFixedLength32(txid),
 					Vout:      vin.Vout,
 					PublicKey: nil,
 					SecretKey: &interimSecKey,
@@ -155,10 +157,10 @@ func TestSenderCreateOutputsWithVinCheck(t *testing.T) {
 					}
 				}
 
-				interimSecKey := ConvertToFixedLength32(secKey)
+				interimSecKey := utils.ConvertToFixedLength32(secKey)
 
 				vins = append(vins, &Vin{
-					Txid:         ConvertToFixedLength32(txid),
+					Txid:         utils.ConvertToFixedLength32(txid),
 					Vout:         vin.Vout,
 					PublicKey:    nil,
 					ScriptPubKey: scriptPubKey,

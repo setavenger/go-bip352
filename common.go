@@ -7,6 +7,8 @@ import (
 	"math/big"
 
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/setavenger/blindbit-lib/utils"
+	golibsecp256k1 "github.com/setavenger/go-libsecp256k1"
 )
 
 type TypeUTXO int8
@@ -21,9 +23,13 @@ const (
 
 // CreateOutputPubKey
 // returns 32 byte x-only pubKey
-func CreateOutputPubKey(sharedSecret [33]byte, receiverSpendPubKey [33]byte, k uint32) ([32]byte, error) {
+func CreateOutputPubKey(
+	sharedSecret [33]byte,
+	receiverSpendPubKey [33]byte,
+	k uint32,
+) ([32]byte, error) {
 	// Calculate and return P_output_xonly = B_spend + t_k * G
-	output, _, err := CreateOutputPubKeyTweak(sharedSecret, receiverSpendPubKey, k)
+	output, _, err := CreateOutputPubKeyTweak(&sharedSecret, &receiverSpendPubKey, k)
 	if err != nil {
 		return [32]byte{}, err
 	}
@@ -32,7 +38,11 @@ func CreateOutputPubKey(sharedSecret [33]byte, receiverSpendPubKey [33]byte, k u
 
 // CreateOutputPubKeyTweak
 // same as CreateOutputPubKey but this also returns the tweak of the output and the 33 byte compressed output
-func CreateOutputPubKeyTweak(sharedSecret [33]byte, receiverSpendPubKey [33]byte, k uint32) ([32]byte, [32]byte, error) {
+func CreateOutputPubKeyTweak(
+	sharedSecret *[33]byte,
+	receiverSpendPubKey *[33]byte,
+	k uint32,
+) ([32]byte, [32]byte, error) {
 	// Calculate and return P_output_xonly = B_spend + t_k * G
 	tkScalar, err := ComputeTK(sharedSecret, k)
 	if err != nil {
@@ -44,16 +54,16 @@ func CreateOutputPubKeyTweak(sharedSecret [33]byte, receiverSpendPubKey [33]byte
 	tkScalarPubKey := PubKeyFromSecKey(&tkScalar)
 
 	// P_output_xonly = B_spend + t_k * G
-	outputPubKey, err := AddPublicKeys(&receiverSpendPubKey, &tkScalarPubKey)
+	outputPubKey, err := AddPublicKeys(receiverSpendPubKey, tkScalarPubKey)
 	if err != nil {
 		return [32]byte{}, [32]byte{}, err
 	}
 
 	// return x-only key
-	return ConvertToFixedLength32(outputPubKey[1:]), tkScalar, nil
+	return utils.ConvertToFixedLength32(outputPubKey[1:]), tkScalar, nil
 }
 
-func ComputeTK(sharedSecret [33]byte, k uint32) ([32]byte, error) {
+func ComputeTK(sharedSecret *[33]byte, k uint32) ([32]byte, error) {
 	var buffer bytes.Buffer
 	buffer.Write(sharedSecret[:])
 	serializedK, err := SerU32(k)
@@ -62,17 +72,21 @@ func ComputeTK(sharedSecret [33]byte, k uint32) ([32]byte, error) {
 	}
 	buffer.Write(serializedK)
 	tKScalar := TaggedHash("BIP0352/SharedSecret", buffer.Bytes())
-	if bytes.Equal(tKScalar[:], bytes.Repeat([]byte{0}, 32)) {
+	if bytes.Equal(tKScalar[:], Zero32[:]) {
 		return [32]byte{}, errors.New("invalid tweak, was zero")
 	}
 
+	// todo: find this check in libsecp256k1
 	if btcec.S256().N.Cmp(new(big.Int).SetBytes(tKScalar[:])) <= 0 {
-		return [32]byte{}, errors.New(fmt.Sprintf("Err: invalid tweak, was equal or greater than curve order %x", tKScalar[:]))
+		rawErrStr := "Err: invalid tweak, was equal or greater than curve order %x"
+		errMsg := fmt.Sprintf(rawErrStr, tKScalar[:])
+		err := errors.New(errMsg)
+		return [32]byte{}, err
 	}
 	return tKScalar, err
 }
 
-func CreateLabelTweak(scanSecKey [32]byte, m uint32) ([32]byte, error) {
+func CreateLabelTweak(scanSecKey *[32]byte, m uint32) ([32]byte, error) {
 	serialisedM, err := SerU32(m)
 	if err != nil {
 		return [32]byte{}, err
@@ -82,25 +96,25 @@ func CreateLabelTweak(scanSecKey [32]byte, m uint32) ([32]byte, error) {
 	return hash, nil
 }
 
-func CreateLabel(scanSecKey [32]byte, m uint32) (Label, error) {
+func CreateLabel(scanSecKey *[32]byte, m uint32) (Label, error) {
 	labelTweak, err := CreateLabelTweak(scanSecKey, m)
 	if err != nil {
 		return Label{}, err
 	}
 
-	labelPubKey := PubKeyFromSecKey(&labelTweak)
+	labelPubKey := golibsecp256k1.PubKeyFromSecKey(&labelTweak)
 
-	return Label{Tweak: labelTweak, PubKey: labelPubKey, M: m}, err
+	return Label{Tweak: labelTweak, PubKey: *labelPubKey, M: m}, err
 }
 
 // ComputeInputHash computes the input_hash for a transaction as per the specification.
 // vins: does not need to contain public key or secret key, only needs the txid and vout; txid has to be in the normal human-readable format
 // sumPublicKeys: 33 byte compressed public key sum of the inputs for shared derivation https://github.com/josibake/bips/blob/silent-payments-bip/bip-0352.mediawiki#inputs-for-shared-secret-derivation
-func ComputeInputHash(vins []*Vin, publicKeySum [33]byte) ([32]byte, error) {
+func ComputeInputHash(vins []*Vin, publicKeySum *[33]byte) (*[32]byte, error) {
 	// Find the lexicographically smallest outpoint (outpointL)
 	smallestOutpoint, err := FindSmallestOutpoint(vins) // Implement this function based on your requirements
 	if err != nil {
-		return [32]byte{}, fmt.Errorf("error finding smallest outpoint: %w", err)
+		return nil, fmt.Errorf("error finding smallest outpoint: %w", err)
 	}
 
 	// Concatenate outpointL and A_sum
@@ -109,5 +123,5 @@ func ComputeInputHash(vins []*Vin, publicKeySum [33]byte) ([32]byte, error) {
 	// Compute input_hash using domain-separated hash
 	inputHash := TaggedHash("BIP0352/Inputs", buffer)
 
-	return inputHash, nil
+	return &inputHash, nil
 }

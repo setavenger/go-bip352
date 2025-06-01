@@ -2,6 +2,7 @@ package bip352
 
 import (
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/setavenger/blindbit-lib/utils"
 )
 
 type Recipient struct {
@@ -62,10 +63,10 @@ func SenderCreateOutputs(recipients []*Recipient, vins []*Vin, mainnet bool, che
 	// derive A_sum from the private key sum aG + bG = [a+b]*G
 	_, publicKeySum := btcec.PrivKeyFromBytes(secretKeySum[:])
 
-	publicKeySumBytes := ConvertToFixedLength33(publicKeySum.SerializeCompressed())
+	publicKeySumBytes := utils.ConvertToFixedLength33(publicKeySum.SerializeCompressed())
 
 	// compute inputHash
-	inputHash, err := ComputeInputHash(vins, publicKeySumBytes)
+	inputHash, err := ComputeInputHash(vins, &publicKeySumBytes)
 	if err != nil {
 		return err
 	}
@@ -91,15 +92,17 @@ func SenderCreateOutputs(recipients []*Recipient, vins []*Vin, mainnet bool, che
 	groups := matchRecipients(recipients)
 
 	for receiverScanPubKey, groupRecipients := range groups {
+		var secretCopy [32]byte
+		copy(secretCopy[:], secretKeySum[:])
 
-		sharedSecret, err := CreateSharedSecret(receiverScanPubKey, secretKeySum, &inputHash)
+		sharedSecret, err := CreateSharedSecret(&receiverScanPubKey, &secretCopy, inputHash)
 		if err != nil {
 			return err
 		}
 
 		var k uint32 = 0
 		for _, recipient := range groupRecipients {
-			outputPubKey, err := CreateOutputPubKey(sharedSecret, ConvertToFixedLength33(recipient.SpendPubKey.SerializeCompressed()), k)
+			outputPubKey, err := CreateOutputPubKey(*sharedSecret, utils.ConvertToFixedLength33(recipient.SpendPubKey.SerializeCompressed()), k)
 			if err != nil {
 				return err
 			}
@@ -128,11 +131,9 @@ func NegateSecretKey(secretKey [32]byte) [32]byte {
 
 func matchRecipients(recipients []*Recipient) map[[33]byte][]*Recipient {
 	matches := make(map[[33]byte][]*Recipient)
-
 	for _, recipient := range recipients {
-		scanKey := ConvertToFixedLength33(recipient.ScanPubKey.SerializeCompressed())
+		scanKey := utils.ConvertToFixedLength33(recipient.ScanPubKey.SerializeCompressed())
 		matches[scanKey] = append(matches[scanKey], recipient)
 	}
-
 	return matches
 }

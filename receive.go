@@ -2,6 +2,8 @@ package bip352
 
 import (
 	"bytes"
+
+	"github.com/setavenger/blindbit-lib/utils"
 )
 
 type FoundOutput struct {
@@ -26,22 +28,22 @@ type Label struct {
 // inputHash: 32 byte can be nil if publicComponent is a tweak and already includes the input_hash
 func ReceiverScanTransaction(
 	scanKey [32]byte,
-	receiverSpendPubKey [33]byte,
+	receiverSpendPubKey *[33]byte,
 	labels []*Label,
 	txOutputs [][32]byte,
-	publicComponent [33]byte,
+	publicComponent *[33]byte,
 	inputHash *[32]byte,
 ) ([]*FoundOutput, error) {
 	// todo should probably check inputs before computation especially the labels
 	var foundOutputs []*FoundOutput
 
-	sharedSecret, err := CreateSharedSecret(publicComponent, scanKey, inputHash)
+	sharedSecret, err := CreateSharedSecret(publicComponent, &scanKey, inputHash)
 	if err != nil {
 		return nil, err
 	}
 
 	var k uint32 = 0
-	for true {
+	for {
 		var outputPubKey [32]byte
 		var tweak [32]byte
 		outputPubKey, tweak, err = CreateOutputPubKeyTweak(sharedSecret, receiverSpendPubKey, k)
@@ -57,6 +59,7 @@ func ReceiverScanTransaction(
 					SecKeyTweak: tweak,
 					Label:       nil,
 				})
+				// txOutputs = slices.Delete(txOutputs, i, i+1) // very slow
 				txOutputs = append(txOutputs[:i], txOutputs[i+1:]...)
 				found = true
 				k++
@@ -70,8 +73,8 @@ func ReceiverScanTransaction(
 			// now check the labels
 			var foundLabel *Label
 
-			prependedTxOutput := ConvertToFixedLength33(append([]byte{0x02}, txOutput[:]...))
-			prependedOutputPubKey := ConvertToFixedLength33(append([]byte{0x02}, outputPubKey[:]...))
+			prependedTxOutput := utils.ConvertToFixedLength33(append([]byte{0x02}, txOutput[:]...))
+			prependedOutputPubKey := utils.ConvertToFixedLength33(append([]byte{0x02}, outputPubKey[:]...))
 
 			// start with normal output
 			foundLabel, err = MatchLabels(prependedTxOutput, prependedOutputPubKey, labels)
@@ -79,6 +82,7 @@ func ReceiverScanTransaction(
 				return nil, err
 			}
 
+			// important: copy the tweak to avoid modifying the original tweak
 			var secKeyTweak [32]byte
 			copy(secKeyTweak[:], tweak[:])
 
@@ -114,7 +118,7 @@ func ReceiverScanTransaction(
 					return nil, err
 				}
 				foundOutputs = append(foundOutputs, &FoundOutput{
-					Output:      ConvertToFixedLength32(prependedTxOutput[1:]),
+					Output:      utils.ConvertToFixedLength32(prependedTxOutput[1:]),
 					SecKeyTweak: secKeyTweak,
 					Label:       foundLabel,
 				})

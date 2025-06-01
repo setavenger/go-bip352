@@ -9,27 +9,11 @@ import (
 	"sort"
 
 	"github.com/btcsuite/btcd/btcec/v2"
-	"golang.org/x/crypto/ripemd160"
 )
 
-func SumPublicKeys(pubKeys [][33]byte) ([33]byte, error) {
-	var lastPubKeyBytes [33]byte
-
-	for idx, bytesPubKey := range pubKeys {
-		if idx == 0 {
-			lastPubKeyBytes = bytesPubKey
-			continue
-		}
-
-		var err error
-		lastPubKeyBytes, err = AddPublicKeys(&lastPubKeyBytes, &bytesPubKey)
-		if err != nil {
-			return [33]byte{}, err
-		}
-	}
-
-	return lastPubKeyBytes, nil
-}
+var (
+	Zero32 [32]byte
+)
 
 // ReverseBytes reverses the byte slice and returns that same byte slice
 func ReverseBytes(bytes []byte) []byte {
@@ -129,14 +113,6 @@ func FindSmallestOutpoint(vins []*Vin) ([]byte, error) {
 	return outpoints[0], nil
 }
 
-// Hash160 performs a RIPEMD160(SHA256(data)) hash on the given data
-func Hash160(data []byte) []byte {
-	sha256Hash := sha256.Sum256(data)
-	ripemd160Hasher := ripemd160.New()
-	ripemd160Hasher.Write(sha256Hash[:]) // Hash the SHA256 hash
-	return ripemd160Hasher.Sum(nil)
-}
-
 // ParseWitnessScript parses a hex-encoded witness script and returns the actual witness data as a list
 func ParseWitnessScript(data []byte) ([][]byte, error) {
 
@@ -170,22 +146,4 @@ func ParseWitnessScript(data []byte) ([][]byte, error) {
 	}
 
 	return witnessData, nil
-}
-
-func ConvertToFixedLength32(input []byte) [32]byte {
-	if len(input) != 32 {
-		panic(fmt.Sprintf("wrong length expected 32 got %d", len(input)))
-	}
-	var output [32]byte
-	copy(output[:], input)
-	return output
-}
-
-func ConvertToFixedLength33(input []byte) [33]byte {
-	if len(input) != 33 {
-		panic(fmt.Sprintf("wrong length expected 33 got %d", len(input)))
-	}
-	var output [33]byte
-	copy(output[:], input)
-	return output
 }

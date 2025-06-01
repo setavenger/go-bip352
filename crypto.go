@@ -1,11 +1,10 @@
-//go:build !libsecp256k1
-
 package bip352
 
 import (
-	"math/big"
+	"crypto/sha256"
 
-	"github.com/btcsuite/btcd/btcec/v2"
+	golibsecp256k1 "github.com/setavenger/go-libsecp256k1"
+	"golang.org/x/crypto/ripemd160"
 )
 
 // CreateSharedSecret
@@ -22,105 +21,79 @@ import (
 // shared_secret = (b_scan * input_hash) * A_sum   [Receiver, Full node scenario]
 //
 // shared_secret = b_scan * A_tweaked   [Receiver, Light client scenario]
+//
+// publicComponent is modified in place
 func CreateSharedSecret(
-	publicComponent [33]byte,
-	secretComponent [32]byte,
+	publicComponent *[33]byte,
+	secretComponent *[32]byte,
 	inputHash *[32]byte,
-) ([33]byte, error) {
-	pubKey, err := btcec.ParsePubKey(publicComponent[:])
-	if err != nil {
-		return [33]byte{}, err
-	}
-
+) (*[33]byte, error) {
+	var err error
 	if inputHash != nil {
-		secretComponent = MultPrivateKeys(secretComponent, *inputHash)
+		err = golibsecp256k1.MultPrivateKeys(secretComponent, inputHash)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// Compute the scalar multiplication a * B (ECDH shared secret)
-	x, y := btcec.S256().ScalarMult(pubKey.X(), pubKey.Y(), secretComponent[:])
-
-	sharedSecretKey, err := ConvertPointsToPublicKey(x, y)
+	err = golibsecp256k1.PubKeyTweakMul(publicComponent, secretComponent)
 	if err != nil {
-		return [33]byte{}, err
+		return nil, err
 	}
 
-	return ConvertToFixedLength33(sharedSecretKey.SerializeCompressed()), nil
+	return publicComponent, nil
 }
 
 func AddPublicKeys(publicKeyBytes1, publicKeyBytes2 *[33]byte) ([33]byte, error) {
-	publicKey1, err := btcec.ParsePubKey(publicKeyBytes1[:])
-	if err != nil {
-		return [33]byte{}, err
-	}
-
-	publicKey2, err := btcec.ParsePubKey(publicKeyBytes2[:])
-	if err != nil {
-		return [33]byte{}, err
-	}
-
-	sumX, sumY := btcec.S256().Add(publicKey1.X(), publicKey1.Y(), publicKey2.X(), publicKey2.Y())
-
-	finalPubKey, err := ConvertPointsToPublicKey(sumX, sumY)
-	if err != nil {
-		return [33]byte{}, err
-	}
-
-	return ConvertToFixedLength33(finalPubKey.SerializeCompressed()), nil
+	return golibsecp256k1.PubKeyAdd(publicKeyBytes1, publicKeyBytes2)
 }
 
 func AddPrivateKeys(secKey1, secKey2 *[32]byte) error {
-	// Convert hex strings to big integers
-	key1 := new(big.Int).SetBytes(secKey1[:])
-	key2 := new(big.Int).SetBytes(secKey2[:])
-
-	curveParams := btcec.S256().Params()
-
-	newKey := new(big.Int).Add(key1, key2)
-	newKey.Mod(newKey, curveParams.N)
-	paddedResult := make([]byte, 32)
-	copy(paddedResult[32-len(newKey.Bytes()):], newKey.Bytes())
-
-	copy(secKey1[:], paddedResult)
-
-	return nil
+	return golibsecp256k1.SecKeyAdd(secKey1, *secKey2)
 }
 
 func NegatePublicKey(pk *[33]byte) error {
-	pubKey, err := btcec.ParsePubKey(pk[:])
-	if err != nil {
-		return err
+	return golibsecp256k1.PubKeyNegate(pk)
+}
+
+func MultPrivateKeys(secKey1, secKey2 *[32]byte) error { // modify to return error instead of new key. work with pointers
+	return golibsecp256k1.MultPrivateKeys(secKey1, secKey2)
+}
+
+func PubKeyFromSecKey(secKey *[32]byte) *[33]byte {
+	return golibsecp256k1.PubKeyFromSecKey(secKey)
+}
+
+func SumPublicKeys(pubKeys [][33]byte) (out *[33]byte, err error) {
+	var lastPubKey [33]byte
+
+	for idx, pubKey := range pubKeys {
+		if idx == 0 {
+			lastPubKey = pubKey
+		} else {
+			lastPubKey, err = golibsecp256k1.PubKeyAdd(&lastPubKey, &pubKey)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
-	curve := btcec.S256()
-	interim := new(big.Int).Sub(curve.Params().P, pubKey.Y())
-	newY := new(big.Int).Mod(interim, curve.Params().P)
-	newKey, err := ConvertPointsToPublicKey(pubKey.X(), newY)
-	if err != nil {
-		return err
-	}
-
-	val := newKey.SerializeCompressed()
-	copy(pk[:], val)
-
-	return err
+	return &lastPubKey, nil
 }
 
-func MultPrivateKeys(secKey1, secKey2 [32]byte) [32]byte {
-	key1 := new(big.Int).SetBytes(secKey1[:])
-	key2 := new(big.Int).SetBytes(secKey2[:])
+// Hashes
 
-	curveParams := btcec.S256().Params()
-
-	newKey := new(big.Int).Mul(key1, key2)
-	newKey.Mod(newKey, curveParams.N)
-	return ConvertToFixedLength32(newKey.Bytes())
+// HashTagged hashes a tag and a message using SHA256(SHA256(tag || data))
+func HashTagged(tag string, msg []byte) [32]byte {
+	tagHash := sha256.Sum256([]byte(tag))
+	data := append(tagHash[:], tagHash[:]...)
+	data = append(data, msg...)
+	return sha256.Sum256(data)
 }
 
-func PubKeyFromSecKey(secKey *[32]byte) [33]byte {
-	_, pubKey := btcec.PrivKeyFromBytes(secKey[:])
-	return ConvertToFixedLength33(pubKey.SerializeCompressed())
+// Hash160 performs a RIPEMD160(SHA256(data)) hash on the given data
+func Hash160(data []byte) []byte {
+	sha256Hash := sha256.Sum256(data)
+	ripemd160Hasher := ripemd160.New()
+	ripemd160Hasher.Write(sha256Hash[:]) // Hash the SHA256 hash
+	return ripemd160Hasher.Sum(nil)
 }
-
-// func CreateLabelPublicKey(labelTweak [32]byte) [33]byte {
-// 	_, pubKey := btcec.PrivKeyFromBytes(labelTweak[:])
-// 	return ConvertToFixedLength33(pubKey.SerializeCompressed())
-// }

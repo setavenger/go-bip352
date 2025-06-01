@@ -2,9 +2,10 @@ package bip352
 
 import (
 	"github.com/btcsuite/btcd/btcutil/bech32"
+	"github.com/setavenger/blindbit-lib/utils"
 )
 
-func CreateAddress(scanPubKeyBytes, bMKeyBytes [33]byte, mainnet bool, version uint8) (string, error) {
+func CreateAddress(scanPubKeyBytes, bMKeyBytes *[33]byte, mainnet bool, version uint8) (string, error) {
 	var data []byte
 	//data = append(data, version)
 	data = append(data, scanPubKeyBytes[:]...)
@@ -15,7 +16,7 @@ func CreateAddress(scanPubKeyBytes, bMKeyBytes [33]byte, mainnet bool, version u
 		return "", err
 	}
 
-	data = append(data, version)
+	// data = append(data, version)
 
 	var finalSlice []byte
 	finalSlice = append(finalSlice, version)
@@ -29,10 +30,10 @@ func CreateAddress(scanPubKeyBytes, bMKeyBytes [33]byte, mainnet bool, version u
 }
 
 func CreateLabeledAddress(
-	scanPubKeyBytes, spendPubKeyBytes [33]byte,
+	scanPubKeyBytes, spendPubKeyBytes *[33]byte,
 	mainnet bool,
 	version uint8,
-	scanSecKey [32]byte,
+	scanSecKey *[32]byte,
 	m uint32,
 ) (string, error) {
 	labelTweak, err := CreateLabelTweak(scanSecKey, m)
@@ -48,7 +49,7 @@ func CreateLabeledAddress(
 		return "", err
 	}
 
-	return CreateAddress(scanPubKeyBytes, bMKeyBytes, mainnet, version)
+	return CreateAddress(scanPubKeyBytes, &bMKeyBytes, mainnet, version)
 }
 
 // DecodeSilentPaymentAddress
@@ -97,12 +98,12 @@ func DecodeSilentPaymentAddressToKeys(
 		return [33]byte{}, [33]byte{}, err
 	}
 
-	return ConvertToFixedLength33(data[:33]), ConvertToFixedLength33(data[33:]), err
+	return utils.ConvertToFixedLength33(data[:33]), utils.ConvertToFixedLength33(data[33:]), err
 }
 
 // CreateLabelledSpendPubKey Returns the labeled spend pub key
 //
 // B_m = B_spend + label
-func CreateLabelledSpendPubKey(spendPubKey, labelPubKey [33]byte) ([33]byte, error) {
-	return AddPublicKeys(&spendPubKey, &labelPubKey)
+func CreateLabelledSpendPubKey(spendPubKey, labelPubKey *[33]byte) ([33]byte, error) {
+	return AddPublicKeys(spendPubKey, labelPubKey)
 }

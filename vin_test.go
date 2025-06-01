@@ -3,8 +3,11 @@ package bip352
 import (
 	"bytes"
 	"encoding/hex"
-	"github.com/btcsuite/btcd/btcutil"
 	"testing"
+
+	"github.com/btcsuite/btcd/btcutil"
+
+	"github.com/setavenger/blindbit-lib/utils"
 )
 
 func TestVin(t *testing.T) {
@@ -15,7 +18,7 @@ func TestVin(t *testing.T) {
 	var targetAmount uint64 = 10_000_000
 
 	var vin = Vin{
-		Txid:         ConvertToFixedLength32(txid),
+		Txid:         utils.ConvertToFixedLength32(txid),
 		Vout:         vout,
 		ScriptPubKey: pkScript,
 		Amount:       targetAmount,

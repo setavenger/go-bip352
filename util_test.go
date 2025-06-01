@@ -3,8 +3,10 @@ package bip352
 import (
 	"bytes"
 	"encoding/hex"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"testing"
+
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/setavenger/blindbit-lib/utils"
 )
 
 func TestRecursiveAddPrivateKeys(t *testing.T) {
@@ -17,27 +19,26 @@ func TestRecursiveAddPrivateKeys(t *testing.T) {
 	pKey3, _ := hex.DecodeString("038c8d23d4764feffcd5e72e380802540fa0f88e3d62ad5e0b47955f74d7b283c4")
 
 	testRecursiveHelper(t, [][32]byte{
-		ConvertToFixedLength32(secKey1),
+		utils.ConvertToFixedLength32(secKey1),
 	}, [][33]byte{
-		ConvertToFixedLength33(pKey1),
+		utils.ConvertToFixedLength33(pKey1),
 	})
 	testRecursiveHelper(t, [][32]byte{
-		ConvertToFixedLength32(secKey1),
-		ConvertToFixedLength32(secKey2),
+		utils.ConvertToFixedLength32(secKey1),
+		utils.ConvertToFixedLength32(secKey2),
 	}, [][33]byte{
-		ConvertToFixedLength33(pKey1),
-		ConvertToFixedLength33(pKey2),
+		utils.ConvertToFixedLength33(pKey1),
+		utils.ConvertToFixedLength33(pKey2),
 	})
 	testRecursiveHelper(t, [][32]byte{
-		ConvertToFixedLength32(secKey1),
-		ConvertToFixedLength32(secKey2),
-		ConvertToFixedLength32(secKey3),
+		utils.ConvertToFixedLength32(secKey1),
+		utils.ConvertToFixedLength32(secKey2),
+		utils.ConvertToFixedLength32(secKey3),
 	}, [][33]byte{
-		ConvertToFixedLength33(pKey1),
-		ConvertToFixedLength33(pKey2),
-		ConvertToFixedLength33(pKey3),
+		utils.ConvertToFixedLength33(pKey1),
+		utils.ConvertToFixedLength33(pKey2),
+		utils.ConvertToFixedLength33(pKey3),
 	})
-
 }
 
 func testRecursiveHelper(t *testing.T, secKeys [][32]byte, pKeys [][33]byte) {

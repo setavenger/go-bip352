@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/hex"
 	"testing"
+
+	"github.com/setavenger/blindbit-lib/utils"
 )
 
 func TestFindSmallestOutpoint(t *testing.T) {
@@ -23,27 +25,27 @@ func TestFindSmallestOutpoint(t *testing.T) {
 
 	var vins = []*Vin{
 		{
-			Txid: ConvertToFixedLength32(vin1Txid),
+			Txid: utils.ConvertToFixedLength32(vin1Txid),
 			Vout: uint32(vin1Vout),
 		},
 		{
-			Txid: ConvertToFixedLength32(vin2Txid),
+			Txid: utils.ConvertToFixedLength32(vin2Txid),
 			Vout: uint32(vin2Vout),
 		},
 		{
-			Txid: ConvertToFixedLength32(vin3Txid),
+			Txid: utils.ConvertToFixedLength32(vin3Txid),
 			Vout: uint32(vin3Vout),
 		},
 		{
-			Txid: ConvertToFixedLength32(vin4Txid),
+			Txid: utils.ConvertToFixedLength32(vin4Txid),
 			Vout: uint32(vin4Vout),
 		},
 		{
-			Txid: ConvertToFixedLength32(vin5Txid),
+			Txid: utils.ConvertToFixedLength32(vin5Txid),
 			Vout: uint32(vin5Vout),
 		},
 		{
-			Txid: ConvertToFixedLength32(vin6Txid),
+			Txid: utils.ConvertToFixedLength32(vin6Txid),
 			Vout: uint32(vin6Vout),
 		},
 	}
@@ -67,11 +69,11 @@ func TestFindSmallestOutpoint(t *testing.T) {
 
 	vins = []*Vin{
 		{
-			Txid: ConvertToFixedLength32(vin1Txid),
+			Txid: utils.ConvertToFixedLength32(vin1Txid),
 			Vout: uint32(vin1Vout),
 		},
 		{
-			Txid: ConvertToFixedLength32(vin2Txid),
+			Txid: utils.ConvertToFixedLength32(vin2Txid),
 			Vout: uint32(vin2Vout),
 		},
 	}
@@ -96,11 +98,11 @@ func TestFindSmallestOutpoint(t *testing.T) {
 
 	vins = []*Vin{
 		{
-			Txid: ConvertToFixedLength32(vin1Txid),
+			Txid: utils.ConvertToFixedLength32(vin1Txid),
 			Vout: uint32(vin1Vout),
 		},
 		{
-			Txid: ConvertToFixedLength32(vin2Txid),
+			Txid: utils.ConvertToFixedLength32(vin2Txid),
 			Vout: uint32(vin2Vout),
 		},
 	}
