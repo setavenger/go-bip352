@@ -52,7 +52,7 @@ func CreateLabeledAddress(
 	return CreateAddress(scanPubKeyBytes, &bMKeyBytes, mainnet, version)
 }
 
-// DecodeSilentPaymentAddress
+// DecodeSilentPaymentAddress returns the components of an SP address
 // Returns:
 // 1. hrp
 // 2. the raw byte data that was encoded

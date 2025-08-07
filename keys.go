@@ -3,6 +3,7 @@ package bip352
 import (
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/setavenger/blindbit-lib/utils"
 	"github.com/tyler-smith/go-bip39"
 )
 
@@ -105,5 +106,5 @@ func DeriveKeysFromMaster(
 		return
 	}
 
-	return ConvertToFixedLength32(secretKeyScan.Serialize()), ConvertToFixedLength32(secretKeySpend.Serialize()), nil
+	return utils.ConvertToFixedLength32(secretKeyScan.Serialize()), utils.ConvertToFixedLength32(secretKeySpend.Serialize()), nil
 }
