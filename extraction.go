@@ -38,23 +38,23 @@ func ExtractPubKey(vin *Vin) ([]byte, TypeUTXO) {
 	var pubKey []byte
 	var utxoType = Unknown
 
-	if isP2TR(vin.ScriptPubKey) {
+	if IsP2TR(vin.ScriptPubKey) {
 		pubKey = extractPubKeyFromP2TR(vin)
 		if pubKey != nil {
 			utxoType = P2TR
 		}
-	} else if isP2WPKH(vin.ScriptPubKey) {
+	} else if IsP2WPKH(vin.ScriptPubKey) {
 		// last element in the witness data is public key; skip uncompressed
 		if len(vin.Witness[len(vin.Witness)-1]) == 33 {
 			pubKey = vin.Witness[len(vin.Witness)-1]
 			utxoType = P2WPKH
 		}
-	} else if isP2PKH(vin.ScriptPubKey) {
+	} else if IsP2PKH(vin.ScriptPubKey) {
 		pubKey = extractFromP2PKH(vin)
 		if pubKey != nil {
 			utxoType = P2PKH
 		}
-	} else if isP2SH(vin.ScriptPubKey) {
+	} else if IsP2SH(vin.ScriptPubKey) {
 		// P2SH-P2WPKH which is seen as a p2sh
 		if len(vin.ScriptSig) == 23 {
 			if bytes.Equal(vin.ScriptSig[:3], []byte{0x16, 0x00, 0x14}) {
@@ -118,8 +118,8 @@ func extractPubKeyFromP2TR(vin *Vin) []byte {
 	return nil
 }
 
-// isP2TR checks if the script is a P2TR (Pay-to-Taproot) type.
-func isP2TR(spk []byte) bool {
+// IsP2TR checks if the script is a P2TR (Pay-to-Taproot) type.
+func IsP2TR(spk []byte) bool {
 	if len(spk) != 34 {
 		return false
 	}
@@ -127,8 +127,8 @@ func isP2TR(spk []byte) bool {
 	return spk[0] == 0x51 && spk[1] == 0x20
 }
 
-// isP2WPKH checks if the script is a P2WPKH (Pay-to-Witness-Public-Key-Hash) type.
-func isP2WPKH(spk []byte) bool {
+// IsP2WPKH checks if the script is a P2WPKH (Pay-to-Witness-Public-Key-Hash) type.
+func IsP2WPKH(spk []byte) bool {
 	if len(spk) != 22 {
 		return false
 	}
@@ -136,8 +136,8 @@ func isP2WPKH(spk []byte) bool {
 	return spk[0] == 0x00 && spk[1] == 0x14
 }
 
-// isP2SH checks if the script is a P2SH (Pay-to-Script-Hash) type.
-func isP2SH(spk []byte) bool {
+// IsP2SH checks if the script is a P2SH (Pay-to-Script-Hash) type.
+func IsP2SH(spk []byte) bool {
 	if len(spk) != 23 {
 		return false
 	}
@@ -145,8 +145,8 @@ func isP2SH(spk []byte) bool {
 	return spk[0] == 0xA9 && spk[1] == 0x14 && spk[len(spk)-1] == 0x87
 }
 
-// isP2PKH checks if the script is a P2PKH (Pay-to-Public-Key-Hash) type.
-func isP2PKH(spk []byte) bool {
+// IsP2PKH checks if the script is a P2PKH (Pay-to-Public-Key-Hash) type.
+func IsP2PKH(spk []byte) bool {
 	if len(spk) != 25 {
 		return false
 	}
