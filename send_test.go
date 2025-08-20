@@ -65,7 +65,7 @@ func TestSenderCreateOutputs(t *testing.T) {
 					Vout:      vin.Vout,
 					PublicKey: nil,
 					SecretKey: &interimSecKey,
-					Taproot:   isP2TR(scriptPubKey),
+					Taproot:   IsP2TR(scriptPubKey),
 				})
 			}
 
@@ -167,7 +167,7 @@ func TestSenderCreateOutputsWithVinCheck(t *testing.T) {
 					ScriptSig:    scriptSig,
 					Witness:      witnessScript,
 					SecretKey:    &interimSecKey,
-					Taproot:      isP2TR(scriptPubKey),
+					Taproot:      IsP2TR(scriptPubKey),
 				})
 			}
 
