@@ -36,6 +36,8 @@ func CreateSharedSecret(
 		}
 	}
 
+	// todo: publicComponent is modified in place and the api does not properlu shows this
+	// despite the comment above not ideal
 	err = golibsecp256k1.PubKeyTweakMul(publicComponent, secretComponent)
 	if err != nil {
 		return nil, err
