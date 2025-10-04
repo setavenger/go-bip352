@@ -2,6 +2,8 @@ package bip352
 
 import (
 	"bytes"
+	"encoding/hex"
+	"encoding/json"
 
 	"github.com/setavenger/blindbit-lib/utils"
 )
@@ -17,6 +19,23 @@ type Label struct {
 	Tweak   [32]byte `json:"tweak"`   // tweak/secKey to produce the labels pubKey
 	Address string   `json:"address"` // todo the corresponding address for the label, still needs a good API for instantiating with this data
 	M       uint32   `json:"m"`
+}
+
+type LabelJSON struct {
+	PubKey  string `json:"pub_key"`
+	Tweak   string `json:"tweak"`
+	Address string `json:"address"`
+	M       uint32 `json:"m"`
+}
+
+func (l *Label) MarshalJSON() ([]byte, error) {
+	alias := LabelJSON{
+		PubKey:  hex.EncodeToString(l.PubKey[:]),
+		Tweak:   hex.EncodeToString(l.Tweak[:]),
+		Address: l.Address,
+		M:       l.M,
+	}
+	return json.Marshal(alias)
 }
 
 // ReceiverScanTransaction
